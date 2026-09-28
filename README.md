@@ -7,8 +7,7 @@
 
 ## Overview
 
-[One paragraph: what the language is for, who would use it, what writing it
-feels like.]
+Simulang is a constraint-based language for people who would rather describe a system than script it. Instead of loops, a program declares entities (things that hold state) and laws (rules that act on them), then lets the system evolve until a stated condition holds. Writing it feels like setting up the rules of a small world and watching it settle, rather than stepping through instructions one at a time.
 
 ## Host language and build
 
@@ -29,11 +28,11 @@ feels like.]
 | `./run` | [Starts the REPL.] |
 
 
-Exit codes: 0 when file scans with no errors, 65 when scanner rejects an input, 70 [when].
+Exit codes: 0 when file scans with no errors, 65 when scanner rejects an input, 70 on runtime errors.
 
 ## File extension
 
-`.cord` [Must match the `ext` field in every tests/lab*/manifest.json.]
+`.src` [Must match the `ext` field in every tests/lab*/manifest.json.]
 
 ## Lexical structure
 
@@ -41,8 +40,19 @@ Exit codes: 0 when file scans with no errors, 65 when scanner rejects an input, 
 
 
 | Keyword | Purpose |
-| [word] | [what does it do] |
-
+| `entity` | Declares an entity, a named thing with its own  state |
+| `law` | Declares a rule that acts on entities |
+| `evolve` | Repeatedly applies laws; replaces loop |
+| `until` | Gives the stopping condition of an `evolve` |
+| `when` | Conditional(the language's if) |
+| `var` | Declares a variable |
+| `print` | Prints a value |
+| `return` | Returns a value from a law |
+| `and` | Logical conjuction |
+| `or` | Logical disjunction |
+| `true` | Boolean literal |
+| `false` | Boolean literal |
+| `nil` | The absence of a value |
 
 ### Operators
 
@@ -53,37 +63,48 @@ Exit codes: 0 when file scans with no errors, 65 when scanner rejects an input, 
 |   `)`    | grouping |    none    |      none     | highest, overides all precedence |
 |   `{`    |  block   |    none    |      none     |             none                 |
 |   `}`    |  block   |    none    |      none     |             none                 |
-|   `,`    |separator |    none    |      none     |             none                 |
+|   `,`    |separator   |    none    |      none     |             none                 |
+|   `:`    |separator |    none    |      none     |             none                 |
 |   `;`    |separator |    none    |      none     |             none                 |
+|   `->`    | arrow   |    none    |      none     |             none                 |
 |   `.`    |separator |    none    |      none     |             none                 |
-|   `+`    |arithmetic|   binary   |      none     |             none                 |
+|   `+`,`-`|arithmetic|   binary   |      left     |             3                 |
 |   `-`    |arithmetic|binary/unary|      none     |             none                 |
 |   `*`    |arithmetic|   binary   |      none     |             none                 |
 |   `/`    |arithmetic|    none    |      none     |             none                 |
-
+| `!` | logical | unary | right | 1 |
+| `-` (unary) | arithmetic | unary | right | 1 |
+| `*` `/` `%` | arithmetic | binary | left | 2 |
+| `+` `-` | arithmetic | binary | left | 3 |
+| `<` `<=` `>` `>=` | comparison | binary | left | 4 |
+| `==` `!=` | equality | binary | left | 5 |
+| `and` | logical | binary | left | 6 |
+| `or` | logical | binary | left | 7 |
+| `=` | assignment | binary | right | 8 (lowest) |
 
 ### Literals
 
 
 | Kind | Syntax | Produces |
 |---|---|---|
-| [number] | [e.g. 42, 3.14] | [what runtime value] |
-| [string] | [e.g. "hello", escapes supported] | [what runtime value] |
-| [boolean] | [true, false] | [what runtime value] |
-| [nil] | [spelling] | [what runtime value] |
+| number | `42`, `3.14` | a 64-bit float (`f64`) |
+| string | `"hello"` | a `String` holding the text between the quotes |
+| boolean | `true`, `false` | keyword token; the token's literal is `null` |
+| nil | `nil` | keyword token; the token's literal is `null` |
 
 
 ### Identifiers
 
-- Start characters: [which]
-- Continue characters: [which]
-- Case-sensitive: [yes or no]
-- [Reserved patterns, length limits, or other restrictions.]
+- Start characters: `A-Z`, `a-z`, `_`
+- Continue characters: `A-Z`, `a-z`, `0-9`, `_`
+- Case-sensitive: yes (`var` is a keyword, `Var` is an identifier)
+- Keywords are reserved and cannot be used as identifiers. A name is read in full before the keyword check, so `variable` is an identifier, not `var` followed by `iable`.
+- ASCII only. Any non-ASCII character is a lexical error.
 
 ### Comments
 
 - Line comments: `//`, reads until end of line
-- Block comments: `//* ... *//`
+- Block comments: not supported
 - Nesting: not supported
 - Harness note: `comment_prefix` in `tests/lab*/manifest.json` is set to `//`
 
@@ -245,4 +266,4 @@ approval of your own work.]
 
 | Activity | What changed in the language |
 |---|---|
-| Lab 1 | [entry] |
+| Lab 1 | Defined the token set: punctuation, arithmetic, comparison and equality operators, `->`, keywords (`entity`, `law`, `evolve`, `until`, `when`, `var`, `print`, `return`, `and`, `or`, `true`, `false`, `nil`), number and string literals, and identifiers |
