@@ -1,0 +1,4 @@
+Token(type=Number, lexeme=6, literal=6, line=1)
+Token(type=Modulo, lexeme=%, literal=null, line=1)
+Token(type=Number, lexeme=7, literal=7, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

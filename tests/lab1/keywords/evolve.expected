@@ -1,0 +1,3 @@
+Token(type=Evolve, lexeme=evolve, literal=null, line=1)
+Token(type=Identifier, lexeme=form, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

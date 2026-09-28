@@ -1,0 +1,3 @@
+Token(type=Until, lexeme=until, literal=null, line=1)
+Token(type=Identifier, lexeme=midnight, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

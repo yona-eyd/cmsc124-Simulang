@@ -1,0 +1,3 @@
+Token(type=Return, lexeme=return, literal=null, line=1)
+Token(type=Number, lexeme=67, literal=67, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

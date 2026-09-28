@@ -1,0 +1,3 @@
+Token(type=Identifier, lexeme=colon, literal=null, line=1)
+Token(type=Colon, lexeme=:, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

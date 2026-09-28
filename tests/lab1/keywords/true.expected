@@ -1,0 +1,4 @@
+Token(type=Identifier, lexeme=komsai_no_ligo, literal=null, line=1)
+Token(type=EqualTo, lexeme===, literal=null, line=1)
+Token(type=True, lexeme=true, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

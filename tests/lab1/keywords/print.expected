@@ -1,0 +1,3 @@
+Token(type=Print, lexeme=print, literal=null, line=1)
+Token(type=StringLit, lexeme="doofenschmirtz", literal=doofenschmirtz, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)
