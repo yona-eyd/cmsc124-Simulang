@@ -1,0 +1,3 @@
+Token(type=StringLit, lexeme="a", literal=a, line=1)
+Token(type=Identifier, lexeme=b, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)
