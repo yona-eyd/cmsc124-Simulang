@@ -245,7 +245,7 @@ impl Parser {
             TokenList::LeftParen => {
                 self.advance();
                 let inner = self.expression()?;
-                self.consume(TokenList::RightParen, "Expect ')' after experssion.")?;
+                self.consume(TokenList::RightParen, "Expect ')' after expression.")?;
                 return Ok(Expr::Grouping(Box::new(inner)));
             }
             _ =>return Err(self.error_at(&tok, "Expect expression.")),
@@ -294,13 +294,13 @@ impl Parser {
 impl fmt::Display for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expr:: Number(_n) => write!(f, "n:?"),
+            Expr:: Number(n) => write!(f, "{n:?}"),
             Expr:: Str(s) => write!(f, "\"{s}\""),
             Expr:: Bool(b) => write!(f, "{b}"),
             Expr:: Nil =>write!(f, "nil"),
             Expr:: Variable(name) => write!(f, "{}", name.lexeme),
             Expr::Unary {op, right} => write!(f, "({} {right})", op.lexeme),
-            Expr::Binary {left,op, right} | Expr::Logical{left, op, right} => {write! (f, "({} {left} {right}", op.lexeme)}
+            Expr::Binary {left,op, right} | Expr::Logical{left, op, right} => {write! (f, "({} {left} {right})", op.lexeme)}
             Expr:: Assign {name, value} => write!(f, "(= {} {value})", name.lexeme),
             Expr::Grouping(e) => write!(f, "(group {e})"),
         }
