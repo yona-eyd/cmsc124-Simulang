@@ -151,7 +151,7 @@ fn main() -> ExitCode {
     match args.len() {
         1 => run_prompt(),
         3 if args[1] == "--tokenize" => run_file_with(&args[2], run_tokenizer),
-        3 if args[1] == "--tokenize" => run_file_with(&args[2], run_parse),
+        3 if args[1] == "--parser" => run_file_with(&args[2], run_parse),
         _ => {
             eprintln!("Usage: scanner [--tokenize <path>]");
             ExitCode::from(64)
