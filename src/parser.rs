@@ -68,7 +68,7 @@ impl Parser {
 
     //parses one expression with required semicolon ';'
     pub fn parse_line(mut self) -> Result<Expr, Vec<ParseError>> {
-    let expr = match self.expression() {
+    let expr = match self.statement() {
         Ok(e) => e,
         Err(e) => { 
             self.errors.push(e); 
@@ -78,7 +78,7 @@ impl Parser {
 
     //anything left over is an error
     if !self.at_end() {
-        let e = self.error_at(self.peek(), "Expect end of expression.");
+        let e = self.error_at(self.peek(), "Expect end of input after ';'");
         self.errors.push(e);
     }
     if self.errors.is_empty() { Ok(expr) } else { Err(self.errors) }
