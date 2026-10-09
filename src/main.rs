@@ -71,28 +71,21 @@ fn run_parse(source: &str) -> bool {
             return false;
         }
     };
- 
-    let mut outputs = Vec::new();
-    let mut ok = true;
- 
-    for group in split_by_line(tokens) {
-        match Parser::new(group).parse_line() {
-            Ok(expr) => outputs.push(expr.to_string()),
-            Err(errs) => {
-                for e in &errs {
-                    eprintln!("{e}");
-                }
-                ok = false;
+
+    match Parser::new(tokens).parse(){
+        Ok(exprs) => {
+            for expr in &exprs {
+                println!("{expr}");
             }
+            true
+        }
+        Err(errs) => {
+            for e in &errs {
+                eprintln!("{e}");
+            }
+            false
         }
     }
- 
-    if ok {
-        for line in outputs {
-            println!("{line}");
-        }
-    }
-    ok
 }
 
 fn run_file_with(path: &str, run: fn(&str)-> bool) -> ExitCode {

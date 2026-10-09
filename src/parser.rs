@@ -288,6 +288,21 @@ impl Parser {
     if self.errors.is_empty() { Ok(expr) } else { Err(self.errors) }
 }
 
+    /// Parses a whole program: ( expression ";" )* EOF
+    pub fn parse(mut self) -> Result<Vec<Expr>, Vec<ParseError>> {
+        let mut exprs = Vec::new();
+        while !self.at_end() {
+            match self.statement() {
+                Ok(expr) => exprs.push(expr),
+                Err(e) => {
+                    self.errors.push(e);
+                    self.synchronize();
+                }
+            }
+        }
+        if self.errors.is_empty() { Ok(exprs) } else { Err(self.errors) }
+    }
+
 }
 
 
