@@ -131,9 +131,26 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 ## Grammar
 
 ```
-[Your complete context-free grammar, current as of the latest activity.
-Unambiguous, with precedence and associativity encoded in rule structure.]
+program     → ( expression ";" )* EOF
+expression  → assignment
+assignment  → IDENTIFIER "=" assignment | logic_or
+logic_or    → logic_and ( "or" logic_and )*
+logic_and   → equality ( "and" equality )*
+equality    → comparison ( ( "!=" | "==" ) comparison )*
+comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
+term        → factor ( ( "-" | "+" ) factor )*
+factor      → unary ( ("/" | "*" | "%" ) unary )*
+unary       → ( "!" | "-" ) unary | primary
+primary     → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER  | "(" expression ")"
+
 ```
+
+- Grammar is unambiguous as each level delegates only to the next tighter one, so a level only receive finished subtrees from tighter levels.
+- Every binary level is left-associative as it is a loop, assignment and unary are right-associative because they recurse on the righ
+- and/or are words with their on two levels
+- % sits right with * and /
+- ; terminates each expression
+
 
 ## Parse output format
 
@@ -141,8 +158,8 @@ Unambiguous, with precedence and associativity encoded in rule structure.]
 [one line of real --parse output, e.g. (+ 1.0 (* 2.0 3.0))]
 ```
 
-- Groupings print as: [form]
-- Numbers print as: [form]
+- Groupings print as: `(group <inner>)`, e.g.  ``
+- Numbers print as: a a number with a decimal point, e.g. `42` prints as `42.0` and `3.14` as `3.14`
 
 ## Semantics
 
@@ -260,6 +277,7 @@ approval of your own work.]
 3. Empty input still emits a single Eof token at the very first line.
 4. scan_tokens() collects error in the file before returning rather than stopping at the first one.
 5. REPL scans one line at a time. A token split across multiple lines is read as undfinished and returns an error immediately.
+6. AST formats number with Rust's `{:?}` for `f64`, which switches to exponent form for values greater than or equal to 1e16 or less than 1e-4. (e.g. `10000000000000000;` prints `1e16`, `0.00001;` prints `1e-5`). Values in between print normally. 
 
 ## Changelog
 
