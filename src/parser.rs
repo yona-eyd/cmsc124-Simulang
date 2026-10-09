@@ -66,15 +66,15 @@ impl Parser {
             errors: Vec::new() }
     }
 
-    //parses one expression with optional trailing ';'
+    //parses one expression with required semicolon ';'
     pub fn parse_line(mut self) -> Result<Expr, Vec<ParseError>> {
     let expr = match self.expression() {
         Ok(e) => e,
-        Err(e) => { self.errors.push(e); return Err(self.errors); }
+        Err(e) => { 
+            self.errors.push(e); 
+            return Err(self.errors); 
+        }
     };
-
-    //';' is optional here
-    self.matches(&[TokenList::Semicolon]);
 
     //anything left over is an error
     if !self.at_end() {
