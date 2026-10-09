@@ -1,0 +1,4 @@
+Token(type=Identifier, lexeme=semicolon, literal=null, line=1)
+Token(type=Identifier, lexeme=test, literal=null, line=1)
+Token(type=Semicolon, lexeme=;, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

@@ -1,0 +1,3 @@
+Token(type=Not, lexeme=!, literal=null, line=1)
+Token(type=Identifier, lexeme=stinky, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

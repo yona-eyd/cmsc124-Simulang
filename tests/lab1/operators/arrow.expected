@@ -1,0 +1,4 @@
+Token(type=Identifier, lexeme=here, literal=null, line=1)
+Token(type=Arrow, lexeme=->, literal=null, line=1)
+Token(type=Identifier, lexeme=there, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

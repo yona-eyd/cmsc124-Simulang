@@ -1,0 +1,2 @@
+Token(type=StringLit, lexeme="// this is not a comment", literal=// this is not a comment, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

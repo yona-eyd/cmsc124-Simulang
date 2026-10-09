@@ -1,0 +1,3 @@
+Token(type=Var, lexeme=var, literal=null, line=1)
+Token(type=Identifier, lexeme=code, literal=null, line=1)
+Token(type=Engk, lexeme=, literal=null, line=1)

@@ -1,6 +1,0 @@
-Token(type=StringLit, lexeme="hello world", literal=hello world, line=1)
-Token(type=StringLit, lexeme="line one
-line two", literal=line one
-line two, line=2)
-Token(type=StringLit, lexeme="backslash \n stays literal", literal=backslash \n stays literal, line=4)
-Token(type=Engk, lexeme=, literal=null, line=4)
