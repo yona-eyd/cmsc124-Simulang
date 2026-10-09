@@ -7,7 +7,6 @@ use std::env;
 use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
-use tokens::{Literal, Token, TokenList};
 use parser::Parser;
 
 fn run_tokenizer(source: &str) -> bool {
@@ -26,38 +25,6 @@ fn run_tokenizer(source: &str) -> bool {
             false
         }
     }
-}
-
-fn split_by_line(tokens: Vec<Token>) -> Vec<Vec<Token>> {
-    let mut groups: Vec<Vec<Token>> = Vec::new();
-    let mut current_line: Option<usize> = None;
- 
-    for tok in tokens {
-        if tok.token_type == TokenList::Engk {
-            break;
-        }
-        match current_line {
-            Some(line) if line == tok.line => {
-                groups.last_mut().unwrap().push(tok);
-            }
-            _ => {
-                current_line = Some(tok.line);
-                groups.push(vec![tok]);
-            }
-        }
-    }
- 
-    for group in groups.iter_mut() {
-        let line = group.last().map(|t| t.line).unwrap_or(1);
-        group.push(Token {
-            token_type: TokenList::Engk,
-            lexeme: String::new(),
-            literal: Literal::None,
-            line,
-        });
-    }
- 
-    groups
 }
  
 fn run_parse(source: &str) -> bool {
