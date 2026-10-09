@@ -1,0 +1,1 @@
+(and (group (or a b)) c)

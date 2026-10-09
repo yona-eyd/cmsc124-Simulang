@@ -278,6 +278,7 @@ approval of your own work.]
 4. scan_tokens() collects error in the file before returning rather than stopping at the first one.
 5. REPL scans one line at a time. A token split across multiple lines is read as undfinished and returns an error immediately.
 6. AST formats number with Rust's `{:?}` for `f64`, which switches to exponent form for values greater than or equal to 1e16 or less than 1e-4. (e.g. `10000000000000000;` prints `1e16`, `0.00001;` prints `1e-5`). Values in between print normally. 
+7. Parser only accepts and expects one expression per line since semicolon indicates end of expression.
 
 ## Changelog
 
