@@ -113,7 +113,7 @@ fn main() -> ExitCode {
         3 if args[1] == "--tokenize" => run_file_with(&args[2], run_tokenizer),
         3 if args[1] == "--parse" => run_file_with(&args[2], run_parse),
         _ => {
-            eprintln!("Usage: scanner [--tokenize <path>]");
+            eprintln!("Usage: scanner [--tokenize | --parse <path>]");
             ExitCode::from(64)
         }
     }
