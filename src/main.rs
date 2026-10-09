@@ -76,11 +76,12 @@ fn run_parse(source: &str) -> bool {
     let mut ok = true;
  
     for group in split_by_line(tokens) {
-        let mut parser = Parser::new(group);
-        match parser.expression() {
-            Ok(expr) => outputs.push(expr.print()),
-            Err(e) => {
-                eprintln!("[line {}] Error: {}", e.line, e.message);
+        match Parser::new(group).parse_line() {
+            Ok(expr) => outputs.push(expr.to_string()),
+            Err(errs) => {
+                for e in &errs {
+                    eprintln!("{e}");
+                }
                 ok = false;
             }
         }
@@ -118,15 +119,18 @@ fn run_prompt() -> ExitCode {
         if stdin.read_line(&mut line).unwrap_or(0) == 0 {
             break; 
         }
-        let scanner = Scanner::new(&line);
-        match scanner.scan_tokens() {
-            Ok(tokens) => {
-                let mut parser = Parser::new(tokens);
-                match parser.expression() {
-                    Ok(expr) => println!("{}", expr.print()),
-                    Err(e) => eprintln!("[line {}] Error: {}", e.line, e.message),
+        if line.trim().is_empty (){
+            continue;
+       }
+        match Scanner::new(&line).scan_tokens() {
+            Ok(tokens) => match Parser::new(tokens).parse_line() {
+                    Ok(expr) => println!("{expr}"),
+                    Err(errs) => {
+                        for e in &errs {
+                            eprintln!("{e}");
+                        }
                 }
-            }
+            },
             Err(errors) => {
                 for err in &errors {
                     eprintln!("[line {}] Error: {}", err.line, err.message);
