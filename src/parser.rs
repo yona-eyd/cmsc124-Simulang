@@ -1,29 +1,58 @@
 use crate::tokens::{Literal, Token, TokenList};
+use std::fmt;
 
 #[derive(Debug)]
 pub enum Expr {
-    Literal(Literal),
+    Number(f64),
+    Str(String),
+    Bool(bool),
+    Nil,
+    Variable(Token),
+    Grouping(Box<Expr>),
+    Unary { op: Token, right: Box<Expr>},
     Binary {
         left:   Box<Expr>,
         op:     Token,
         right:  Box<Expr>,
     },
-    Grouping(Box<Expr>)
+    Logical {
+        left:   Box<Expr>,
+        op:     Token,
+        right:  Box<Expr>
+    },
+    Assign{
+        name:   Token,
+        value: Box<Expr>
+    }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParseError {
     pub line: usize,
+    pub location: String,
     pub message: String,
 }
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[line {}] Error {}: {}", self.line, self.location, self.message)
+    }
+}
+
+type PResult<T> = Result<T, ParseError>;
+
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    errors: Vec<ParseError>,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser {tokens, current: 0 }
+        Parser {
+            tokens, 
+            current: 0, 
+            errors: Vec::new() }
     }
     
     // ** HELPER FUNCTIONS **
@@ -71,83 +100,209 @@ impl Parser {
     }
 
     // ask for the token or throw error
-    fn consume (&mut self, token_type: TokenList, message: &str) -> Result<&Token, ParseError> {
+    fn consume (&mut self, token_type: TokenList, message: &str) -> PResult<Token> {
         if self.check(token_type) {
-            return Ok(self.advance());
+            Ok(self.advance().clone())
         }
-        Err(self.error(self.peek(), message))
+        else {
+        Err(self.error_at(self.peek(), message))
+        }
+    }
+    
+    fn matches(&mut self, types: &[TokenList]) -> bool {
+        if types.iter().any(|t| self.check(t.clone())) {
+            self.advance();
+            true
+        } else {
+            false
+        }
     }
 
-    fn error (&self, token: &Token, message: &str) -> ParseError {
+    fn error_at(&self, token: &Token, message: &str) -> ParseError{
+        let location = if token.token_type == TokenList::Engk {
+            "at end".to_string()
+        } else {
+            format!("at '{}'", token.lexeme)
+        };
         ParseError {
-            line:token.line,
-            message: message.to_string(),
+            line: token.line, 
+            location, 
+            message: message.to_string()
         }
     }
+
+
 
     // ** RECURSIVE DESCENT FUNCTIONS **
     
-    // expression → term
-    pub fn expression(&mut self) -> Result<Expr , ParseError> {
-        self.term()
+    fn statement(&mut self) -> PResult<Expr> {
+        let expr = self.expression()?;
+        self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
+        Ok(expr)
+    }
+    // expression → assignment
+    pub fn expression(&mut self) -> PResult<Expr> {
+        self.assignment()
     }
 
-    // term → factor ( ("+" | "-") factor )*
-    fn term(&mut self) -> Result<Expr , ParseError> {
-        let mut node = self.factor()?;
+    fn assignment(&mut self) -> PResult<Expr>{
+        let expr = self.logic_or()?;
+        if self.matches(&[TokenList::Assign]){
+            let equals = self.previous().clone();
+            let value = self.assignment()?;
 
-        while let Some(_) = self.match_token(&[TokenList::Plus, TokenList::Minus]) {
-            let op = self.previous().clone();
-            let right = self.factor()?;
-            node = Expr::Binary {
-                left: Box::new(node),
-                op,
-                right: Box::new(right),
+            return match expr {
+                Expr::Variable(name) => Ok(Expr::Assign {name, value:Box::new(value)}),
+                _ => {
+                    let err = self.error_at(&equals, "Invalid assignment target.");
+                    self.errors.push(err);
+                    Ok(expr)
+                }
             };
         }
-        Ok(node)
+        Ok(expr)
     }
+
+    fn logic_or(&mut self) -> PResult<Expr> {
+        let mut expr = self.logic_and()?;
+        while self.matches(&[TokenList::Or]){
+            let op = self.previous().clone();
+            let right = self.logic_and()?;
+            expr = Expr::Logical {left: Box::new(expr), op, right: Box::new(right)};
+        }
+        Ok(expr)
+    }
+
+    fn logic_and(&mut self) -> PResult<Expr> {
+        let mut expr = self.equality()?;
+        while self.matches(&[TokenList::And]){
+            let op = self.previous().clone();
+            let right = self.equality()?;
+            expr = Expr::Logical {left: Box::new(expr), op, right: Box::new(right)};
+        }
+        Ok(expr)
+    }
+
+    fn binary_level(
+        &mut self,
+        ops: &[TokenList],
+        next: fn(&mut Self) -> PResult<Expr>,
+    ) -> PResult<Expr> {
+        let mut expr = next(self)?;
+        while self.matches(ops){
+            let op = self.previous().clone();
+            let right = next(self)?;
+            expr = Expr::Binary {left: Box::new(expr), op, right:Box::new(right)};
+        }
+        Ok(expr)
+    }
+
+    fn equality(&mut self) -> PResult<Expr> {
+        self.binary_level(&[TokenList::NotEqual, TokenList::EqualTo], Self::comparison)
+    }
+
+    fn comparison(&mut self) -> PResult<Expr> {
+        self.binary_level(&[TokenList::Greater, TokenList::GreaterEql, TokenList::Less, TokenList::LessEql], Self::term)
+    }
+
+  
+    fn term(&mut self) -> PResult<Expr> {
+        self.binary_level (&[TokenList::Minus, TokenList::Plus], Self::factor)
+        }
+    
     
     // factor → NUMBER | "(" expression ")"
-    fn factor(&mut self) -> Result<Expr , ParseError> {
-        match &self.peek().token_type {
-            TokenList::Number => {
-                let val = self.peek().literal.clone();
-                self.advance();
-                Ok(Expr::Literal(val))
-            }
-            
-            TokenList::StringLit => {
-                let val = self.peek().literal.clone();
-                self.advance();
-                Ok(Expr::Literal(val))
-            }
-            
+    fn factor(&mut self) -> PResult<Expr> {
+        self.binary_level(
+            &[TokenList::Slash, TokenList::Star, TokenList::Modulo], Self::unary,
+        )
+    }
 
+    fn unary(&mut self) -> PResult<Expr> {
+        if self.matches(&[TokenList::Not, TokenList::Minus]) {
+            let op = self.previous().clone();
+            let right = self.unary()?; //right-associative
+            return Ok(Expr::Unary {op, right:Box::new(right)});
+        }
+        self.primary()
+    }
+
+    fn primary(&mut self) -> PResult<Expr> {
+        let tok = self.peek().clone();
+        let expr = match tok.token_type {
+            TokenList::False => Expr::Bool(false),
+            TokenList::True => Expr::Bool(true),
+            TokenList::Nil => Expr::Nil,
+            TokenList::Number => match &tok.literal {
+                Literal::Num(n) => Expr::Number(*n),
+                _ => return Err(self.error_at(&tok, "Expect expression.")),
+            },
+            TokenList::StringLit => match &tok.literal {
+                Literal::Str(s) => Expr::Str(s.clone()),
+                _ => return Err(self.error_at (&tok, "Expect expression.")),
+            },
+            TokenList::Identifier => Expr::Variable(tok.clone()),
             TokenList::LeftParen => {
-                self.advance(); // consumes '('
-                let expr = self.expression()?;
-                self.consume(TokenList::RightParen, "Expect ')' after expression.")?;
-                Ok(Expr::Grouping(Box::new(expr)))
+                self.advance();
+                let inner = self.expression()?;
+                self.consume(TokenList::RightParen, "Expect ')' after experssion.")?;
+                return Ok(Expr::Grouping(Box::new(inner)));
             }
-            _ => Err(self.error(self.peek(), "Expect expression.")),
+            _ =>return Err(self.error_at(&tok, "Expect expression.")),
+        };
+        self.advance();
+        Ok(expr)
+    }
+
+    fn synchronize(&mut self) {
+        self.advance(); // always make progress
+        while !self.at_end() {
+            if self.previous().token_type == TokenList::Semicolon {
+                return;
+            }
+            match self.peek().token_type {
+                TokenList::Var
+                | TokenList::Print
+                | TokenList::Return
+                | TokenList::When
+                | TokenList::Until
+                | TokenList::Evolve
+                | TokenList::Law
+                | TokenList::Entity => return,
+                _ => {}
+            }
+            self.advance();
         }
     }
+
+    pub fn parse_line(mut self) -> Result<Expr, Vec<ParseError>> {
+    let expr = match self.expression() {
+        Ok(e) => e,
+        Err(e) => { self.errors.push(e); return Err(self.errors); }
+    };
+    self.matches(&[TokenList::Semicolon]);
+    if !self.at_end() {
+        let e = self.error_at(self.peek(), "Expect end of expression.");
+        self.errors.push(e);
+    }
+    if self.errors.is_empty() { Ok(expr) } else { Err(self.errors) }
+}
+
 }
 
 
-impl Expr {
-    pub fn print(&self) -> String {
+impl fmt::Display for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Expr::Literal(lit) => match lit {
-                Literal::Str(s) => s.clone(),
-                Literal::Num(n) => format!("{n}"),
-                Literal::None => "nil".to_string(),
-            },
-            Expr::Binary { left, op, right } => {
-                format!("({} {} {})", left.print(), op.lexeme, right.print())
-            }
-            Expr::Grouping(expr) => format!("(group {})", expr.print()),
+            Expr:: Number(_n) => write!(f, "n:?"),
+            Expr:: Str(s) => write!(f, "\"{s}\""),
+            Expr:: Bool(b) => write!(f, "{b}"),
+            Expr:: Nil =>write!(f, "nil"),
+            Expr:: Variable(name) => write!(f, "{}", name.lexeme),
+            Expr::Unary {op, right} => write!(f, "({} {right})", op.lexeme),
+            Expr::Binary {left,op, right} | Expr::Logical{left, op, right} => {write! (f, "({} {left} {right}", op.lexeme)}
+            Expr:: Assign {name, value} => write!(f, "(= {} {value})", name.lexeme),
+            Expr::Grouping(e) => write!(f, "(group {e})"),
         }
     }
 }
