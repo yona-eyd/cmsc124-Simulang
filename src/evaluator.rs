@@ -1,4 +1,5 @@
-use crate::tokens::Token;
+use crate::tokens::{Token, TokenList};
+use crate::parser::Expr;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -68,6 +69,108 @@ pub fn check_number_operands(token: &Token, left: &Value, right: &Value) -> Resu
     match (left, right) {
     (Value::Num(a), Value::Num(b)) => Ok((*a, *b)),
     _ => Err(RuntimeError::new(token, "Operands must be numbers.")),
-}
+    }
 }
 
+// evaluator
+pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
+    match expr {
+        // for literals, value is already known
+        Expr::Number(n)     => Ok(Value::Num(*n)),
+        Expr::Str(s)        => Ok(Value::Str(s.clone())),
+        Expr::Bool(b)       => Ok(Value::Bool(*b)),
+        Expr::Nil           => Ok(Value::Nil),
+
+        // parentheses carry no meaning at runtime
+        Expr::Grouping(inner)   => evaluate(inner),
+
+        //operand first, check its type, then apply op
+        Expr::Unary { op, right } => {
+            let right = evaluate(right)?;
+            match op.token_type {
+                TokenList::Minus => {
+                    let n = check_number_operand(op, &right)?;
+                    Ok(Value::Num(-n))
+                }
+                TokenList::Not => Ok(Value::Bool(!is_truthy(&right))),
+                _ => Err(RuntimeError::new(op, "Unknown unary operator.")),
+                }
+            }
+
+        // left operand, then right, then op
+        Expr::Binary { left, op, right } => {
+            let left    = evaluate(left)?;
+            let right   = evaluate(right)?;
+            match op.token_type {
+                TokenList::Minus => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    Ok(Value::Num(a - b))
+                }
+                TokenList::Plus => match (&left, &right) {
+                        (Value::Num(a), Value::Num(b)) => Ok(Value::Num(a + b)),
+                        (Value::Str(a), Value::Str(b)) => Ok(Value::Str(format!("{}{}", a, b))),
+                        _ => Err(RuntimeError::new(op, "Operands must be two numbers or two strings.")),
+                }
+                TokenList::Star => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    Ok(Value::Num(a * b))
+                }
+                TokenList::Slash => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    if b == 0.0 {
+                        return Err(RuntimeError::new(op, "Division by zero."))
+                    }
+                    Ok(Value::Num(a / b))
+                }
+                TokenList::Modulo => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    if b == 0.0 {
+                        return Err(RuntimeError::new(op, "Division by zero."))
+                    }
+                    Ok(Value::Num(a % b))
+                }
+                TokenList::Less => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    Ok(Value::Bool(a < b))
+                }
+                TokenList::LessEql => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    Ok(Value::Bool(a <= b))
+                }
+                TokenList::Greater => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    Ok(Value::Bool(a > b))
+                }
+                TokenList::GreaterEql => {
+                    let (a, b) = check_number_operands(op, &left, &right)?;
+                    Ok(Value::Bool(a >= b))
+                }
+                TokenList::EqualTo => Ok(Value::Bool(is_equal(&left, &right))),
+                TokenList::NotEqual => Ok(Value::Bool(!is_equal(&left, &right))),
+                
+                _ => Err(RuntimeError::new(op, "Unknown binary operator.")),
+            }
+        }
+
+        Expr::Logical { left, op, right} => {
+            let left    = evaluate(left)?;
+            match op.token_type  {
+                TokenList::Or   => {
+                    if is_truthy(&left) {
+                        return Ok(left)
+                    } 
+                }
+                TokenList::And => {
+                    if !is_truthy(&left) {
+                        return Ok(left)
+                    }
+                }
+                _ => return Err(RuntimeError::new(op, "Unknown logical operator.")),
+            }
+            evaluate(right)
+        }
+
+        Expr::Variable(name) => Err(RuntimeError::new(name, "Variables are not supported yet.")),
+        Expr::Assign { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet.")),
+    }
+}
