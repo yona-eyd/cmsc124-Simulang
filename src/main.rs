@@ -1,6 +1,7 @@
 mod tokens;
 mod scanner;
 mod parser;
+mod evaluator;
 
 use scanner::Scanner;
 use std::env;
@@ -8,26 +9,27 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 use parser::Parser;
+use evaluator::evaluate;
 
-fn run_tokenizer(source: &str) -> bool {
+fn run_tokenizer(source: &str) -> u8 {
     let scanner = Scanner::new(source);
     match scanner.scan_tokens() {
         Ok(tokens) => {
             for token in &tokens {
                 println!("{token}");
             }
-            true
+            0
         }
         Err(errors) => {
             for err in &errors {
                 eprintln!("[line {}] Error: {}", err.line, err.message);
             }
-            false
+            65
         }
     }
 }
- 
-fn run_parse(source: &str) -> bool {
+
+fn run_parse(source: &str) -> u8 {
     let scanner = Scanner::new(source);
     let tokens = match scanner.scan_tokens() {
         Ok(t) => t,
@@ -35,7 +37,7 @@ fn run_parse(source: &str) -> bool {
             for err in &errors {
                 eprintln!("[line {}] Error: {}", err.line, err.message);
             }
-            return false;
+            return 65;
         }
     };
 
@@ -44,18 +46,52 @@ fn run_parse(source: &str) -> bool {
             for expr in &exprs {
                 println!("{expr}");
             }
-            true
+            0
         }
         Err(errs) => {
             for e in &errs {
                 eprintln!("{e}");
             }
-            false
+            65
         }
     }
 }
 
-fn run_file_with(path: &str, run: fn(&str)-> bool) -> ExitCode {
+fn run_eval(source: &str) -> u8 {
+    let scanner = Scanner::new(source);
+    let tokens  = match scanner.scan_tokens() {
+        Ok(t) => t,
+        Err(errors) => {
+            for err in &errors {
+                eprintln!("[line {}] Error: {}", err.line, err.message);
+            }
+            return 65;
+        }
+    };
+
+    let exprs = match Parser::new(tokens).parse() {
+        Ok(exprs) => exprs,
+        Err(errs) => {
+            for e in &errs {
+                eprintln!("{e}");
+            }
+            return 65;
+        }
+    };
+
+    for expr in &exprs{
+        match evaluate(expr) {
+            Ok(value)   => println!("{value}"),
+            Err(e)      => {
+                eprintln!("{e}");
+                return 70;
+            }
+        }
+    }
+    0
+}
+
+fn run_file_with(path: &str, run: fn(&str)-> u8) -> ExitCode {
     let source = match fs::read_to_string(path) {
         Ok(s) => s,
         Err(e) => {
@@ -63,11 +99,7 @@ fn run_file_with(path: &str, run: fn(&str)-> bool) -> ExitCode {
             return ExitCode::from(70);
         }
     };
-    if run(&source) {
-        ExitCode::from(0)
-    } else {
-        ExitCode::from(65)  // sysexits, data format error     
-    }
+    ExitCode::from(run(&source))
 }
 
 fn run_prompt() -> ExitCode {
@@ -110,10 +142,11 @@ fn main() -> ExitCode {
     }
     match args.len() {
         1 => run_prompt(),
-        3 if args[1] == "--tokenize" => run_file_with(&args[2], run_tokenizer),
-        3 if args[1] == "--parse" => run_file_with(&args[2], run_parse),
+        3 if args[1] == "--tokenize"    => run_file_with(&args[2], run_tokenizer),
+        3 if args[1] == "--parse"       => run_file_with(&args[2], run_parse),
+        3 if args[1] == "--eval"        => run_file_with(&args[2], run_eval),
         _ => {
-            eprintln!("Usage: scanner [--tokenize | --parse <path>]");
+            eprintln!("Usage: scanner [--tokenize | --parse <path> | --eval <path>]");
             ExitCode::from(64)
         }
     }
