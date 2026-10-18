@@ -120,7 +120,10 @@ fn run_prompt() -> ExitCode {
         }
         match Scanner::new(&line).scan_tokens() {
             Ok(tokens) => match Parser::new(tokens).parse_line() {
-                    Ok(expr) => println!("{expr}"),
+                    Ok(expr) => match evaluate(&expr) {
+                        Ok(value)   => println!("{value}"),
+                        Err(e)      => eprintln!("{e}"),
+                    },
                     Err(errs) => {
                         for e in &errs {
                             eprintln!("{e}");
