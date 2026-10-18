@@ -28,7 +28,11 @@ pub enum Expr {
     Assign{
         name:   Token,
         value: Box<Expr>
-    }
+    },
+
+    // refactored: assign one root for whole file
+    // it holds one child tree per statement, in source order
+    Program(Vec<Expr>),
 }
 
 //----------------errors-----------------------
@@ -86,7 +90,7 @@ impl Parser {
 
     //parses a whole program: ( expression ";" )* EOF
     //calls synchronize() after syntax errors to skip a statement
-    pub fn parse(mut self) -> Result<Vec<Expr>, Vec<ParseError>> {
+    pub fn parse(mut self) -> Result<Expr, Vec<ParseError>> {
         let mut exprs = Vec::new();
         while !self.at_end() {
             match self.statement() {
@@ -98,7 +102,7 @@ impl Parser {
             }
         }
         if self.errors.is_empty() { 
-            Ok(exprs) 
+            Ok(Expr::Program(exprs))    // refactored, now only returns a single Expr
         } else { 
             Err(self.errors) 
         }
@@ -347,6 +351,14 @@ impl fmt::Display for Expr {
             Expr::Binary {left,op, right} | Expr::Logical{left, op, right} => {write! (f, "({} {left} {right})", op.lexeme)}
             Expr:: Assign {name, value} => write!(f, "(= {} {value})", name.lexeme),
             Expr::Grouping(e) => write!(f, "(group {e})"),
+            // refactored: prints the entire tree for multiple statements
+            Expr::Program(stmts) => { 
+                for stmt in stmts { 
+                    writeln!(f, "{stmt}")? 
+                }
+                Ok(())
+            }    
+            
         }
     }
 }

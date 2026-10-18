@@ -40,10 +40,9 @@ fn run_parse(source: &str) -> bool {
     };
 
     match Parser::new(tokens).parse(){
-        Ok(exprs) => {
-            for expr in &exprs {
-                println!("{expr}");
-            }
+        // refactored: no more loop since we do not return a vector anymore
+        Ok(tree) => {
+            print!("{tree}");
             true
         }
         Err(errs) => {
