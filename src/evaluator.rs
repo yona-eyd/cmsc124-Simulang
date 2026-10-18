@@ -170,6 +170,14 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
             evaluate(right)
         }
 
+        Expr::Program(exprs) => {
+            let mut last = Value::Nil;
+            for e in exprs {
+                last = evaluate(e)?;
+            }
+            Ok(last)
+        }
+        
         Expr::Variable(name) => Err(RuntimeError::new(name, "Variables are not supported yet.")),
         Expr::Assign { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet.")),
     }

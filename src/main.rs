@@ -9,6 +9,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 use parser::Parser;
+use parser::Expr;
 use evaluator::evaluate;
 
 fn run_tokenizer(source: &str) -> u8 {
@@ -67,14 +68,19 @@ fn run_eval(source: &str) -> u8 {
         }
     };
 
-    let exprs = match Parser::new(tokens).parse() {
-        Ok(exprs) => exprs,
+    let program = match Parser::new(tokens).parse() {
+        Ok(p) => p,
         Err(errs) => {
             for e in &errs {
                 eprintln!("{e}");
             }
             return 65;
         }
+    };
+
+    let exprs = match program {
+        Expr::Program(exprs) => exprs,
+        other => vec![other]    // if not Program, treat it as one item and don't panic
     };
 
     for expr in &exprs{
