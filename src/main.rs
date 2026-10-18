@@ -42,10 +42,8 @@ fn run_parse(source: &str) -> u8 {
     };
 
     match Parser::new(tokens).parse(){
-        Ok(exprs) => {
-            for expr in &exprs {
-                println!("{expr}");
-            }
+        Ok(tree) => {
+            print!("{tree}");
             0
         }
         Err(errs) => {

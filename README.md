@@ -155,11 +155,11 @@ primary     → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER  | "(" e
 ## Parse output format
 
 ```
-[one line of real --parse output, e.g. (+ 1.0 (* 2.0 3.0))]
+one line of real --parse output, e.g. (* (group (+ 1.0 2.0)) 3.0)
 ```
 
-- Groupings print as: `(group <inner>)`, e.g.  ``
-- Numbers print as: a a number with a decimal point, e.g. `42` prints as `42.0` and `3.14` as `3.14`
+- Groupings print as: `(group <inner>)`, e.g.  `(group (+ 1.0 2.0))`
+- Numbers print as: a a number with a decimal point, e.g. `3` prints as `3.0` and `3.14` as `3.14`
 
 ## Semantics
 
