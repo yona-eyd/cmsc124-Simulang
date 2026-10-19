@@ -1,5 +1,5 @@
 use crate::tokens::{Token, TokenList};
-use crate::parser::Expr;
+use crate::ast::Expr;
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
