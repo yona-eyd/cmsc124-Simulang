@@ -2,6 +2,8 @@ mod tokens;
 mod scanner;
 mod parser;
 mod evaluator;
+mod ast;
+mod helpers;
 
 use scanner::Scanner;
 use std::env;
@@ -9,7 +11,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 use parser::Parser;
-use parser::Expr;
+use crate::ast::Expr;
 use evaluator::evaluate;
 
 fn run_tokenizer(source: &str) -> u8 {
