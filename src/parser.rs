@@ -1,39 +1,6 @@
 use crate::tokens::{Literal, Token, TokenList};
 use std::fmt;
-
-//---------------AST------------------------
-//expression node, printed in prefix form
-#[derive(Debug)]
-pub enum Expr {
-    Number(f64),
-    Str(String),
-    Bool(bool),
-    Nil,
-    Variable(Token), //variable reference so errors can cite token
-    Grouping(Box<Expr>),
-    Unary { op: Token, right: Box<Expr>},
-
-    //arithmetic, comparison, and equality operators
-    Binary {
-        left:   Box<Expr>,
-        op:     Token,
-        right:  Box<Expr>,
-    },
-
-    Logical {
-        left:   Box<Expr>,
-        op:     Token,
-        right:  Box<Expr>
-    },
-    Assign{
-        name:   Token,
-        value: Box<Expr>
-    },
-
-    // refactored: assign one root for whole file
-    // it holds one child tree per statement, in source order
-    Program(Vec<Expr>),
-}
+use crate::ast::Expr;
 
 //----------------errors-----------------------
 
@@ -52,13 +19,13 @@ impl fmt::Display for ParseError {
 }
 
 //result type used by every grammar rule
-type PResult<T> = Result<T, ParseError>;
+pub(crate) type PResult<T> = Result<T, ParseError>;
 
 //-------------------parser-------------------------
 
 pub struct Parser {
-    tokens: Vec<Token>,
-    current: usize, //next token to consume
+    pub(crate)tokens: Vec<Token>,
+    pub(crate) current: usize, //next token to consume
     errors: Vec<ParseError>,
 }
 
@@ -107,99 +74,6 @@ impl Parser {
             Err(self.errors) 
         }
     }
-
-    
-    // ** HELPER FUNCTIONS **
-    
-    // returns current (unconsumed) token
-    fn peek(&self) -> &Token {
-        &self.tokens[self.current]
-    }
-
-    // returns token just consumed
-    fn previous(&self) -> &Token {
-        &self.tokens[self.current - 1]
-    }
-
-    // checks whether we're at EOF
-    fn at_end(&self) -> bool {
-        self.peek().token_type == TokenList::Engk
-    }
-
-    // consumes token and returns it to caller
-    fn advance(&mut self) -> &Token {
-        if !self.at_end() {
-            self.current += 1;
-        }
-        self.previous()
-    }
-
-    // checks if cuttrnt token is of a certain type
-    fn check(&self, token_type: TokenList) -> bool {
-        if self.at_end() {
-            return false;
-        }
-        self.peek().token_type == token_type
-    }
-
-    // ask for the token or throw error
-    fn consume (&mut self, token_type: TokenList, message: &str) -> PResult<Token> {
-        if self.check(token_type) {
-            Ok(self.advance().clone())
-        }
-        else {
-        Err(self.error_at(self.peek(), message))
-        }
-    }
-    
-    //consumes the current token if it is any of 'types' and return if it did
-    fn matches(&mut self, types: &[TokenList]) -> bool {
-        if types.iter().any(|t| self.check(t.clone())) {
-            self.advance();
-            true
-        } else {
-            false
-        }
-    }
-
-    //-------------------error recovery---------------
-    //builds a parser error
-    fn error_at(&self, token: &Token, message: &str) -> ParseError{
-        let location = if token.token_type == TokenList::Engk {
-            "at end".to_string()
-        } else {
-            format!("at '{}'", token.lexeme)
-        };
-        ParseError {
-            line: token.line, 
-            location, 
-            message: message.to_string()
-        }
-    }
-
-    
-    fn synchronize(&mut self) {
-        self.advance(); // always make progress
-        while !self.at_end() {
-            if self.previous().token_type == TokenList::Semicolon {
-                return;
-            }
-            match self.peek().token_type {
-                TokenList::Var
-                | TokenList::Print
-                | TokenList::Return
-                | TokenList::When
-                | TokenList::Until
-                | TokenList::Evolve
-                | TokenList::Law
-                | TokenList::Entity => return,
-                _ => {}
-            }
-            self.advance();
-        }
-    }
-
-
 
     // ** RECURSIVE DESCENT FUNCTIONS **
     
@@ -336,30 +210,4 @@ impl Parser {
     }
 }
 
-//--------- '--parse' printer ------------------
-
-//prefix form
-impl fmt::Display for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Expr:: Number(n) => write!(f, "{n:?}"),
-            Expr:: Str(s) => write!(f, "\"{s}\""),
-            Expr:: Bool(b) => write!(f, "{b}"),
-            Expr:: Nil =>write!(f, "nil"),
-            Expr:: Variable(name) => write!(f, "{}", name.lexeme),
-            Expr::Unary {op, right} => write!(f, "({} {right})", op.lexeme),
-            Expr::Binary {left,op, right} | Expr::Logical{left, op, right} => {write! (f, "({} {left} {right})", op.lexeme)}
-            Expr:: Assign {name, value} => write!(f, "(= {} {value})", name.lexeme),
-            Expr::Grouping(e) => write!(f, "(group {e})"),
-            // refactored: prints the entire tree for multiple statements
-            Expr::Program(stmts) => { 
-                for stmt in stmts { 
-                    writeln!(f, "{stmt}")? 
-                }
-                Ok(())
-            }    
-            
-        }
-    }
-}
 

@@ -1,6 +1,8 @@
 mod tokens;
 mod scanner;
 mod parser;
+mod ast;
+mod helpers;
 
 use scanner::Scanner;
 use std::env;
