@@ -159,34 +159,39 @@ one line of real --parse output, e.g. (* (group (+ 1.0 2.0)) 3.0)
 ```
 
 - Groupings print as: `(group <inner>)`, e.g.  `(group (+ 1.0 2.0))`
-- Numbers print as: a a number with a decimal point, e.g. `3` prints as `3.0` and `3.14` as `3.14`
+- Numbers print as: a number with a decimal point, e.g. `3` prints as `3.0` and `3.14` as `3.14`
 
 ## Semantics
 
 ### Values and types
 
-[What runtime values exist, and how they are represented in the host
-language.]
+Four runtime values, stored in a Rust enum called Value:
+- Num(f64)
+- Str(String)
+- Bool(bool)
+- Nil
+A tagged enum lets us match on which kind a value is, and the compiler warns us if we forget a case.
 
 ### Value printing
 
-- Numbers: [e.g. 5 rather than 5.0]
-- Nil: [spelling]
-- Strings: [with or without quotes]
+- Numbers: whole numbers print without a decimal part (10, not 10.0); other numbers print as they are (2.5 prints as 2.5)
+- Nil: `nil`
+- Strings: without quotes
 
 ### Truthiness
 
-[The complete rule. Which values are false in a condition; everything else is
-true.]
+`false` and `nil` are falsey. Everything else is truthy, including `0` and the empty string.
 
 ### Operator semantics
 
-- Arithmetic: [accepted operand types]
-- `+` on strings: [concatenation, error, or coercion]
-- Mixed types: [what happens]
-- Comparison: [accepted operand types]
-- Equality across types: [false, or an error]
-- Division by zero: [value produced, or runtime error]
+- Arithmetic: `-`, `*`, `/`, `%` and unary `-` accept numbers only.
+- `+` on strings: two strings are concatenated. Two numbers are added.
+- Mixed types: a runtime error, with no coercion ("a" + 1 is an error).
+- Comparison: `<`, `<=`, `>`, `>=` accept numbers only.
+- Equality across types: false, not an error (1 == "1" is false). Strings are compared by content.
+- Division by zero: a runtime error ("Division by zero."), for both `/` and `%`.
+- Evaluation order: left to right. `and` and `or` short-circuit and return the operand itself, not a forced boolean.
+- !: flips truthiness and always returns a boolean.
 
 ### Scope and bindings
 
