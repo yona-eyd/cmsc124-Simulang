@@ -202,7 +202,7 @@ A tagged enum lets us match on which kind a value is, and the compiler warns us 
 
 ### Control flow and functions
 
-- Logical operators return: [booleans, or the operand]
+- Logical operators return: the operand
 - Dangling else binds to: [which if]
 - Closure capture of a loop variable: [per iteration, or shared]
 - Function with no return statement produces: [value]
