@@ -80,9 +80,9 @@ fn run_eval(source: &str) -> u8 {
         }
     };
 
-    let exprs = match program {
-        Expr::Program(exprs) => exprs,
-        other => vec![other]    // if not Program, treat it as one item and don't panic
+    let Expr::Program(exprs) =  program else {
+        eprintln!("Internal error: parser did not return a program.");
+        return 70;
     };
 
     for expr in &exprs{
