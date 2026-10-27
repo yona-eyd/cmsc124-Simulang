@@ -221,16 +221,17 @@ A tagged enum lets us match on which kind a value is, and the compiler warns us 
 Message format:
 
 ```
-[one real static error]
-[one real runtime error]
+[line 1] Error at '1': Expect ';' after expression.
+[line 1] Runtime error: Operands must be two numbers or two strings.
 ```
 
 
 | Failure | Exit code |
 |---|---|
-| [lexical error] | 65 |
-| [syntax error] | 65 |
-| [runtime error] | 70 |
+| Lexical error, e.g. an unexpected character (rejected before running) | 65 |
+| Syntax error, e.g. a missing ';' (rejected before running) | 65 |
+| Missing or unreadable file | 66 |
+| Runtime error, e.g. `"a" + 1;` or `1 / 0;` (started running then failed) | 70 |
 
 
 ## Testing conventions
