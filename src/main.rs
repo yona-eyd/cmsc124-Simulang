@@ -102,7 +102,7 @@ fn run_file_with(path: &str, run: fn(&str)-> u8) -> ExitCode {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Could not read file '{}': {}", path, e);
-            return ExitCode::from(70);
+            return ExitCode::from(66);
         }
     };
     ExitCode::from(run(&source))
