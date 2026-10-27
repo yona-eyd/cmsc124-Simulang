@@ -170,13 +170,9 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
             evaluate(right)
         }
 
-        Expr::Program(exprs) => {
-            let mut last = Value::Nil;
-            for e in exprs {
-                last = evaluate(e)?;
-            }
-            Ok(last)
-        }
+        // not reached, run_eval evaluates each statement of a Program itself
+        // this arm only exists because match must cover every Expr variant
+        Expr::Program(_) => Ok(Value::Nil),
         
         Expr::Variable(name) => Err(RuntimeError::new(name, "Variables are not supported yet.")),
         Expr::Assign { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet.")),
