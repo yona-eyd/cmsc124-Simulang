@@ -1,6 +1,6 @@
 use crate::tokens::{Literal, Token, TokenList};
 use std::fmt;
-use crate::ast::Expr;
+use crate::ast::{Expr, Program, Stmt};
 
 //----------------errors-----------------------
 
@@ -38,7 +38,7 @@ impl Parser {
     }
 
     //parses one expression with required semicolon ';'
-    pub fn parse_line(mut self) -> Result<Expr, Vec<ParseError>> {
+    pub fn parse_line(mut self) -> Result<Stmt, Vec<ParseError>> {
     let expr = match self.statement() {
         Ok(e) => e,
         Err(e) => { 
@@ -57,32 +57,34 @@ impl Parser {
 
     //parses a whole program: ( expression ";" )* EOF
     //calls synchronize() after syntax errors to skip a statement
-    pub fn parse(mut self) -> Result<Expr, Vec<ParseError>> {
-        let mut exprs = Vec::new();
+    pub fn parse(mut self) -> Result<Program, Vec<ParseError>> {
+        let mut stmts = Vec::new();
         while !self.at_end() {
             match self.statement() {
-                Ok(expr) => exprs.push(expr),
+                Ok(stmt) => stmts.push(stmt),
                 Err(e) => {
                     self.errors.push(e);
                     self.synchronize();
                 }
             }
         }
-        if self.errors.is_empty() { 
-            Ok(Expr::Program(exprs))    // refactored, now only returns a single Expr
-        } else { 
-            Err(self.errors) 
-        }
+        if self.errors.is_empty() { Ok(Program(stmts)) } else { Err(self.errors) }
     }
 
     // ** RECURSIVE DESCENT FUNCTIONS **
     
-    //statement -> expression ";"
-    fn statement(&mut self) -> PResult<Expr> {
+    // statement -> printStmt | exprStmt
+    fn statement(&mut self) -> PResult<Stmt> {
+        if self.matches(&[TokenList::Print]) {
+            let value = self.expression()?;
+            self.consume(TokenList::Semicolon, "Expect ';' after value.")?;
+            return Ok(Stmt::Print(value));
+        }
         let expr = self.expression()?;
         self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
-        Ok(expr)
+        Ok(Stmt::Expression(expr))
     }
+    
     // expression → assignment
     pub fn expression(&mut self) -> PResult<Expr> {
         self.assignment()
