@@ -29,11 +29,17 @@ pub enum Expr {
         name:   Token,
         value: Box<Expr>
     },
-
-    // refactored: assign one root for whole file
-    // it holds one child tree per statement, in source order
-    Program(Vec<Expr>),
 }
+
+#[derive(Debug)]
+pub enum Stmt {
+    Expression(Expr),
+    Print(Expr),
+}
+
+#[derive(Debug)]
+pub struct Program(pub Vec<Stmt>);
+
 
 //--------- '--parse' printer ------------------
 
@@ -51,13 +57,27 @@ impl fmt::Display for Expr {
             Expr:: Assign {name, value} => write!(f, "(= {} {value})", name.lexeme),
             Expr::Grouping(e) => write!(f, "(group {e})"),
             // refactored: prints the entire tree for multiple statements
-            Expr::Program(stmts) => { 
-                for stmt in stmts { 
-                    writeln!(f, "{stmt}")? 
-                }
-                Ok(())
-            }    
+            
             
         }
+    }
+}
+
+
+impl fmt::Display for Stmt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Stmt::Expression(e) => write!(f, "{e}"),
+            Stmt::Print(e)      => write!(f, "(print {e})"),
+        }
+    }
+}
+
+impl fmt::Display for Program {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for stmt in &self.0 {
+            writeln!(f, "{stmt}")?;
+        }
+        Ok(())
     }
 }
