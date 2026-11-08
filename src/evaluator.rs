@@ -72,21 +72,25 @@ pub fn check_number_operands(token: &Token, left: &Value, right: &Value) -> Resu
     }
 }
 
-// evaluator
-pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
-    match expr {
-        // for literals, value is already known
+pub struct Interpreter;
+
+impl Interpreter {
+    pub fn new() -> Self { Interpreter }
+
+    pub fn evaluate(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
+        match expr {
+            // for literals, value is already known
         Expr::Number(n)     => Ok(Value::Num(*n)),
         Expr::Str(s)        => Ok(Value::Str(s.clone())),
         Expr::Bool(b)       => Ok(Value::Bool(*b)),
         Expr::Nil           => Ok(Value::Nil),
 
         // parentheses carry no meaning at runtime
-        Expr::Grouping(inner)   => evaluate(inner),
+        Expr::Grouping(inner)   => self.evaluate(inner),
 
         //operand first, check its type, then apply op
         Expr::Unary { op, right } => {
-            let right = evaluate(right)?;
+            let right = self.evaluate(right)?;
             match op.token_type {
                 TokenList::Minus => {
                     let n = check_number_operand(op, &right)?;
@@ -99,8 +103,8 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
 
         // left operand, then right, then op
         Expr::Binary { left, op, right } => {
-            let left    = evaluate(left)?;
-            let right   = evaluate(right)?;
+            let left    = self.evaluate(left)?;
+            let right   = self.evaluate(right)?;
             match op.token_type {
                 TokenList::Minus => {
                     let (a, b) = check_number_operands(op, &left, &right)?;
@@ -153,7 +157,7 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
         }
 
         Expr::Logical { left, op, right} => {
-            let left    = evaluate(left)?;
+            let left    = self.evaluate(left)?;
             match op.token_type  {
                 TokenList::Or   => {
                     if is_truthy(&left) {
@@ -167,7 +171,7 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
                 }
                 _ => return Err(RuntimeError::new(op, "Unknown logical operator.")),
             }
-            evaluate(right)
+            self.evaluate(right)
         }
 
         // not reached, run_eval evaluates each statement of a Program itself
@@ -176,5 +180,6 @@ pub fn evaluate(expr: &Expr) -> Result<Value, RuntimeError> {
         
         Expr::Variable(name) => Err(RuntimeError::new(name, "Variables are not supported yet.")),
         Expr::Assign { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet.")),
+        }
     }
 }

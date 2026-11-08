@@ -12,7 +12,7 @@ use std::io::{self, Write};
 use std::process::ExitCode;
 use parser::Parser;
 use crate::ast::Expr;
-use evaluator::evaluate;
+use evaluator::Interpreter;
 
 fn run_tokenizer(source: &str) -> u8 {
     let scanner = Scanner::new(source);
@@ -85,8 +85,10 @@ fn run_eval(source: &str) -> u8 {
         return 70;
     };
 
+    let mut interpreter = Interpreter::new();
+
     for expr in &exprs{
-        match evaluate(expr) {
+        match interpreter.evaluate(expr) {
             Ok(value)   => println!("{value}"),
             Err(e)      => {
                 eprintln!("{e}");
@@ -110,6 +112,7 @@ fn run_file_with(path: &str, run: fn(&str)-> u8) -> ExitCode {
 
 fn run_prompt() -> ExitCode {
     let stdin = io::stdin();
+    let mut interpreter = Interpreter::new();
     loop {
         print!("> ");
         io::stdout().flush().unwrap();
@@ -122,7 +125,7 @@ fn run_prompt() -> ExitCode {
         }
         match Scanner::new(&line).scan_tokens() {
             Ok(tokens) => match Parser::new(tokens).parse_line() {
-                    Ok(expr) => match evaluate(&expr) {
+                    Ok(expr) => match interpreter.evaluate(&expr) {
                         Ok(value)   => println!("{value}"),
                         Err(e)      => eprintln!("{e}"),
                     },
