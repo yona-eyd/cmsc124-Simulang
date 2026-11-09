@@ -195,6 +195,7 @@ impl Interpreter {
                 }
                 Ok(())
             }
+            Stmt::Var { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet")),
         }
     }
 }

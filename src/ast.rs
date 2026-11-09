@@ -36,6 +36,7 @@ pub enum Stmt {
     Expression(Expr),
     Print(Expr),
     Block(Vec<Stmt>),
+    Var { name: Token, initializer: Option<Expr> },
 }
 
 #[derive(Debug)]
@@ -57,9 +58,6 @@ impl fmt::Display for Expr {
             Expr::Binary {left,op, right} | Expr::Logical{left, op, right} => {write! (f, "({} {left} {right})", op.lexeme)}
             Expr:: Assign {name, value} => write!(f, "(= {} {value})", name.lexeme),
             Expr::Grouping(e) => write!(f, "(group {e})"),
-            // refactored: prints the entire tree for multiple statements
-            
-            
         }
     }
 }
@@ -77,6 +75,10 @@ impl fmt::Display for Stmt {
                 }
                 write!(f, ")")
             }
+            Stmt::Var { name, initializer } => match initializer {
+                Some(init)  => write!(f, "(var {} {init})", name.lexeme),
+                None        => write! (f, "(var {})", name.lexeme),   
+            },
         }
     }
     
