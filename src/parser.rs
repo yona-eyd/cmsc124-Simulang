@@ -73,12 +73,31 @@ impl Parser {
 
     // ** RECURSIVE DESCENT FUNCTIONS **
     
+    // block -> "{" statement* "}"
+    fn block(&mut self) -> PResult<Vec<Stmt>> {
+        let mut stmts = Vec::new();
+        while !self.check(TokenList::RightBrace) && !self.at_end() {
+            match self.statement() {         
+                Ok(s) => stmts.push(s),
+                Err(e) => {
+                    self.errors.push(e);
+                    self.synchronize();
+                }
+            }
+        }
+        self.consume(TokenList::RightBrace, "Expect '}' after block.")?;
+        Ok(stmts)
+    }
+
     // statement -> printStmt | exprStmt
     fn statement(&mut self) -> PResult<Stmt> {
         if self.matches(&[TokenList::Print]) {
             let value = self.expression()?;
             self.consume(TokenList::Semicolon, "Expect ';' after value.")?;
             return Ok(Stmt::Print(value));
+        }
+        if self.matches(&[TokenList::LeftBrace]) {
+            return Ok(Stmt::Block(self.block()?));
         }
         let expr = self.expression()?;
         self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
@@ -210,6 +229,8 @@ impl Parser {
         self.advance();
         Ok(expr)
     }
+
+
 }
 
 

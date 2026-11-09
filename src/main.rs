@@ -82,13 +82,13 @@ fn run_eval(source: &str) -> u8 {
 
     let mut interpreter = Interpreter::new();
     for stmt in &program.0 {
-        let (Stmt::Expression(expr) | Stmt::Print(expr)) = stmt;
+        let (Stmt::Expression(expr) | Stmt::Print(expr)) = stmt else {
+            eprintln!("--eval only supports expression statements.");
+            return 65;
+        };
         match interpreter.evaluate(expr) {
-            Ok(value)   => println!("{value}"),
-            Err(e)      => {
-                eprintln!("{e}");
-                return 70;
-            }
+            Ok(value) => println!("{value}"),
+            Err(e) => { eprintln!("{e}"); return 70; }
         }
     }
     0

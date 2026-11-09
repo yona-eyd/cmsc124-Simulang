@@ -35,6 +35,7 @@ pub enum Expr {
 pub enum Stmt {
     Expression(Expr),
     Print(Expr),
+    Block(Vec<Stmt>),
 }
 
 #[derive(Debug)]
@@ -69,8 +70,16 @@ impl fmt::Display for Stmt {
         match self {
             Stmt::Expression(e) => write!(f, "{e}"),
             Stmt::Print(e)      => write!(f, "(print {e})"),
+            Stmt::Block(stmts) => {
+                write!(f, "(block")?;
+                for s in stmts {
+                    write!(f, " {s}")?;
+                }
+                write!(f, ")")
+            }
         }
     }
+    
 }
 
 impl fmt::Display for Program {

@@ -82,6 +82,7 @@ impl Parser {
             match self.peek().token_type {
                 TokenList::Var
                 | TokenList::Print
+                | TokenList::LeftBrace
                 | TokenList::Return
                 | TokenList::When
                 | TokenList::Until
