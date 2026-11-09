@@ -1,5 +1,5 @@
 use crate::tokens::{Token, TokenList};
-use crate::ast::Expr;
+use crate::ast::{Expr,Stmt};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -174,12 +174,20 @@ impl Interpreter {
             self.evaluate(right)
         }
 
-        // not reached, run_eval evaluates each statement of a Program itself
-        // this arm only exists because match must cover every Expr variant
-        Expr::Program(_) => Ok(Value::Nil),
         
         Expr::Variable(name) => Err(RuntimeError::new(name, "Variables are not supported yet.")),
         Expr::Assign { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet.")),
+        }
+    }
+
+    pub fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+        match stmt {
+            Stmt::Expression(e) => { self.evaluate(e)?; Ok(()) }
+            Stmt::Print(e) => {
+                let value = self.evaluate(e)?;
+                println!("{value}");
+                Ok(())
+            }
         }
     }
 }
