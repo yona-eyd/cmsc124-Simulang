@@ -11,7 +11,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 use parser::Parser;
-use crate::ast::Expr;
+use crate::ast::{Stmt};
 use evaluator::Interpreter;
 
 fn run_tokenizer(source: &str) -> u8 {
@@ -80,20 +80,48 @@ fn run_eval(source: &str) -> u8 {
         }
     };
 
-    let Expr::Program(exprs) =  program else {
-        eprintln!("Internal error: parser did not return a program.");
-        return 70;
-    };
-
     let mut interpreter = Interpreter::new();
-
-    for expr in &exprs{
+    for stmt in &program.0 {
+        let (Stmt::Expression(expr) | Stmt::Print(expr)) = stmt;
         match interpreter.evaluate(expr) {
             Ok(value)   => println!("{value}"),
             Err(e)      => {
                 eprintln!("{e}");
                 return 70;
             }
+        }
+    }
+    0
+}
+
+// plain ./run <file>: only print statements produce output
+fn run_program(source: &str) -> u8 {
+    let scanner = Scanner::new(source);
+    let tokens  = match scanner.scan_tokens() {
+        Ok(t) => t,
+        Err(errors) => {
+            for err in &errors {
+                eprintln!("[line {}] Error: {}", err.line, err.message);
+            }
+            return 65;
+        }
+    };
+
+    let program = match Parser::new(tokens).parse() {
+        Ok(p) => p,
+        Err(errs) => {
+            for e in &errs {
+                eprintln!("{e}");
+            }
+            return 65;
+        }
+    };
+
+    let mut interpreter = Interpreter::new();
+    for stmt in &program.0 {
+        if let Err(e) = interpreter.execute(stmt) {
+            eprintln!("{e}");
+            return 70;
         }
     }
     0
@@ -112,27 +140,32 @@ fn run_file_with(path: &str, run: fn(&str)-> u8) -> ExitCode {
 
 fn run_prompt() -> ExitCode {
     let stdin = io::stdin();
-    let mut interpreter = Interpreter::new();
+    let mut interpreter = Interpreter::new();   // created once, outside the loop
     loop {
         print!("> ");
         io::stdout().flush().unwrap();
         let mut line = String::new();
         if stdin.read_line(&mut line).unwrap_or(0) == 0 {
-            break; 
+            break;
         }
         if line.trim().is_empty (){
             continue;
         }
         match Scanner::new(&line).scan_tokens() {
             Ok(tokens) => match Parser::new(tokens).parse_line() {
-                    Ok(expr) => match interpreter.evaluate(&expr) {
-                        Ok(value)   => println!("{value}"),
-                        Err(e)      => eprintln!("{e}"),
-                    },
-                    Err(errs) => {
-                        for e in &errs {
-                            eprintln!("{e}");
-                        }
+                Ok(stmt) => {
+                    let result = match &stmt {
+                        Stmt::Expression(e) => interpreter.evaluate(e).map(|v| println!("{v}")),
+                        other => interpreter.execute(other),
+                    };
+                    if let Err(e) = result {
+                        eprintln!("{e}");
+                    }
+                }
+                Err(errs) => {
+                    for e in &errs {
+                        eprintln!("{e}");
+                    }
                 }
             },
             Err(errors) => {
@@ -143,17 +176,13 @@ fn run_prompt() -> ExitCode {
         }
     }
     ExitCode::from(0)
-
 }
 
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().collect();
-    if args.len() == 2 && args[1].ends_with("hello.src") {
-        println!("Hello, world!");
-        return ExitCode::from(0);
-    }
     match args.len() {
         1 => run_prompt(),
+        2 if !args[1].starts_with("--") => run_file_with(&args[1], run_program),
         3 if args[1] == "--tokenize"    => run_file_with(&args[2], run_tokenizer),
         3 if args[1] == "--parse"       => run_file_with(&args[2], run_parse),
         3 if args[1] == "--eval"        => run_file_with(&args[2], run_eval),
