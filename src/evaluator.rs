@@ -188,6 +188,13 @@ impl Interpreter {
                 println!("{value}");
                 Ok(())
             }
+            Stmt::Block(stmts) => {
+                // placeholder for block execution, just executes statements in order
+                for s in stmts {
+                    self.execute(s)?;
+                }
+                Ok(())
+            }
         }
     }
 }
