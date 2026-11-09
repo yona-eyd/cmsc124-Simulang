@@ -37,9 +37,9 @@ impl Parser {
             errors: Vec::new() }
     }
 
-    //parses one expression with required semicolon ';'
+    //parses one declaration or statement with required semicolon ';'
     pub fn parse_line(mut self) -> Result<Stmt, Vec<ParseError>> {
-    let expr = match self.statement() {
+    let expr = match self.declaration() {
         Ok(e) => e,
         Err(e) => { 
             self.errors.push(e); 
@@ -55,12 +55,12 @@ impl Parser {
     if self.errors.is_empty() { Ok(expr) } else { Err(self.errors) }
     }
 
-    //parses a whole program: ( expression ";" )* EOF
+    //parses a whole program: declaration* EOF
     //calls synchronize() after syntax errors to skip a statement
     pub fn parse(mut self) -> Result<Program, Vec<ParseError>> {
         let mut stmts = Vec::new();
         while !self.at_end() {
-            match self.statement() {
+            match self.declaration() {
                 Ok(stmt) => stmts.push(stmt),
                 Err(e) => {
                     self.errors.push(e);
@@ -73,6 +73,25 @@ impl Parser {
 
     // ** RECURSIVE DESCENT FUNCTIONS **
     
+    // declaration
+    fn declaration(&mut self) -> PResult<Stmt> {
+        if self.matches(&[TokenList::Var]) {
+            return self.var_declaration();
+        }
+        self.statement()
+    }
+
+    fn var_declaration(&mut self) -> PResult <Stmt> {
+        let name = self.consume(TokenList::Identifier,"Expect variable name.")?;
+        let initializer = if self.matches(&[TokenList::Assign]) {
+            Some(self.expression()?)
+        } else {
+            None
+        };
+        self.consume(TokenList::Semicolon, "Expect ';' after variable declaration.")?;
+        Ok(Stmt::Var { name, initializer })
+    }
+
     // block -> "{" statement* "}"
     fn block(&mut self) -> PResult<Vec<Stmt>> {
         let mut stmts = Vec::new();
