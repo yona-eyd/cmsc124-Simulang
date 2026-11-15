@@ -4,6 +4,7 @@ mod parser;
 mod evaluator;
 mod ast;
 mod helpers;
+mod context;
 
 use scanner::Scanner;
 use std::env;
@@ -13,6 +14,7 @@ use std::process::ExitCode;
 use parser::Parser;
 use crate::ast::{Stmt};
 use evaluator::Interpreter;
+
 
 fn run_tokenizer(source: &str) -> u8 {
     let scanner = Scanner::new(source);

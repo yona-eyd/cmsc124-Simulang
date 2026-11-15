@@ -1,5 +1,6 @@
 use crate::tokens::{Token, TokenList};
 use crate::ast::{Expr,Stmt};
+use crate::context::{Context, ContextRef};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -72,10 +73,14 @@ pub fn check_number_operands(token: &Token, left: &Value, right: &Value) -> Resu
     }
 }
 
-pub struct Interpreter;
+pub struct Interpreter {
+    context: ContextRef,
+}
 
 impl Interpreter {
-    pub fn new() -> Self { Interpreter }
+    pub fn new() -> Self {
+        Interpreter { context: Context::new_global() }
+    }
 
     pub fn evaluate(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
         match expr {
@@ -175,8 +180,12 @@ impl Interpreter {
         }
 
         
-        Expr::Variable(name) => Err(RuntimeError::new(name, "Variables are not supported yet.")),
-        Expr::Assign { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet.")),
+        Expr::Variable(name) => self.context.borrow().get(name),
+        Expr::Assign { name, value } => {
+            let value = self.evaluate(value)?;
+            self.context.borrow_mut().assign(name, value.clone())?;
+            Ok(value)   // assignment is an expression: its value is the assigned value
+        }
         }
     }
 
@@ -188,14 +197,23 @@ impl Interpreter {
                 println!("{value}");
                 Ok(())
             }
-            Stmt::Block(stmts) => {
-                // placeholder for block execution, just executes statements in order
-                for s in stmts {
-                    self.execute(s)?;
-                }
-                Ok(())
+            Stmt::Var { name, initializer } => {
+                // initializer first, so `var a = a;` sees an outer a
+                let value = self.evaluate(initializer)?;
+                self.context.borrow_mut().define(name, value)
             }
-            Stmt::Var { name, .. } => Err(RuntimeError::new(name, "Variables are not supported yet")),
+            Stmt::Block(stmts) => {
+                let inner = Context::new_enclosed(&self.context);
+                self.execute_block(stmts, inner)
+            }
         }
+    }
+
+    // installs `inner`, runs the statements, then always restores the previous scope
+    fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), RuntimeError> {
+        let previous = std::mem::replace(&mut self.context, inner);
+        let result = stmts.iter().try_for_each(|s| self.execute(s));
+        self.context = previous;
+        result
     }
 }
