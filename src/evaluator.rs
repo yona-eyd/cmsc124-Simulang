@@ -206,6 +206,15 @@ impl Interpreter {
                 let inner = Context::new_enclosed(&self.context);
                 self.execute_block(stmts, inner)
             }
+            Stmt::When { condition, then_branch, else_branch } => {
+                let cond = self.evaluate(condition)?;
+                if is_truthy(&cond) {
+                    self.execute(then_branch)?;
+                } else if let Some(else_stmt) = else_branch {
+                    self.execute(else_stmt)?;
+                }
+                Ok(())
+            }
         }
     }
 

@@ -25,7 +25,7 @@ pub enum Expr {
         op:     Token,
         right:  Box<Expr>
     },
-    Assign{
+    Assign {
         name:   Token,
         value: Box<Expr>
     },
@@ -37,6 +37,11 @@ pub enum Stmt {
     Print(Expr),
     Block(Vec<Stmt>),
     Var { name: Token, initializer: Expr },
+    When {
+        condition: Expr,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>
+    },
 }
 
 #[derive(Debug)]
@@ -76,6 +81,10 @@ impl fmt::Display for Stmt {
                 write!(f, ")")
             }
             Stmt::Var { name, initializer } => write!(f, "(var {} {initializer})", name.lexeme),
+            Stmt::When { condition,then_branch, else_branch } => match else_branch {
+                Some(e) => write!(f, "when {condition} {then_branch} {e}"),
+                None    => write!(f, "(when {condition} {then_branch})"),
+            }
         }
     }
     

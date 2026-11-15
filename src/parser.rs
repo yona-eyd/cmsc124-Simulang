@@ -117,9 +117,25 @@ impl Parser {
         if self.matches(&[TokenList::LeftBrace]) {
             return Ok(Stmt::Block(self.block()?));
         }
+        if self.matches(&[TokenList::When]) {
+            return self.when_statement();
+        }
         let expr = self.expression()?;
         self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
         Ok(Stmt::Expression(expr))
+    }
+
+    fn when_statement(&mut self) -> PResult<Stmt> {
+        self.consume(TokenList::LeftParen, "Expect '(' after 'when'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenList::RightParen, "Expect ')' after condition.")?;
+        let then_branch = Box::new(self.statement()?);
+        let else_branch = if self.matches(&[TokenList::Otherwise]) {
+            Some(Box::new(self.statement()?))
+        } else {
+            None   
+        };
+        Ok(Stmt::When { condition, then_branch, else_branch })
     }
     
     // expression → assignment
