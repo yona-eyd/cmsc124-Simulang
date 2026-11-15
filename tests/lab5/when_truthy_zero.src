@@ -1,0 +1,1 @@
+when (0) print "yes";   // expect: yes
