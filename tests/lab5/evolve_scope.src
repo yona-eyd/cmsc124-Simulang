@@ -1,0 +1,5 @@
+evolve {
+    var x = 1;
+} until (true);
+print x;
+// expect runtime error: Undefined variable 'x'.

@@ -1,0 +1,8 @@
+var mutation = 0;
+evolve {
+    print mutation;
+    mutation = mutation + 1;
+} until (mutation >= 3);
+// expect: 0
+// expect: 1
+// expect: 2

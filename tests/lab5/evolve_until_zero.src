@@ -1,0 +1,5 @@
+var parasite = 5;
+evolve until (parasite > 2) {
+    print "never";
+} print "done";
+// expect: done

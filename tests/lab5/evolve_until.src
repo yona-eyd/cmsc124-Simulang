@@ -1,0 +1,8 @@
+var deg_temp = 0;
+evolve until (deg_temp >= 3) {
+    print deg_temp;
+    deg_temp = deg_temp + 1;
+}   
+// expect: 0
+// expect: 1
+// expect: 2
