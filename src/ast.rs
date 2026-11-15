@@ -36,7 +36,7 @@ pub enum Stmt {
     Expression(Expr),
     Print(Expr),
     Block(Vec<Stmt>),
-    Var { name: Token, initializer: Option<Expr> },
+    Var { name: Token, initializer: Expr },
 }
 
 #[derive(Debug)]
@@ -75,10 +75,7 @@ impl fmt::Display for Stmt {
                 }
                 write!(f, ")")
             }
-            Stmt::Var { name, initializer } => match initializer {
-                Some(init)  => write!(f, "(var {} {init})", name.lexeme),
-                None        => write! (f, "(var {})", name.lexeme),   
-            },
+            Stmt::Var { name, initializer } => write!(f, "(var {} {initializer})", name.lexeme),
         }
     }
     

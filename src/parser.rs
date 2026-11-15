@@ -73,7 +73,7 @@ impl Parser {
 
     // ** RECURSIVE DESCENT FUNCTIONS **
     
-    // declaration
+    // declaration -> varDecl | statement
     fn declaration(&mut self) -> PResult<Stmt> {
         if self.matches(&[TokenList::Var]) {
             return self.var_declaration();
@@ -81,22 +81,21 @@ impl Parser {
         self.statement()
     }
 
-    fn var_declaration(&mut self) -> PResult <Stmt> {
-        let name = self.consume(TokenList::Identifier,"Expect variable name.")?;
-        let initializer = if self.matches(&[TokenList::Assign]) {
-            Some(self.expression()?)
-        } else {
-            None
-        };
+    // varDecl -> "var" IDENTIFIER "=" expression ";"
+    fn var_declaration(&mut self) -> PResult<Stmt> {
+        let name = self.consume(TokenList::Identifier, "Expect variable name.")?;
+        self.consume(TokenList::Assign, "Expect '=' after variable name.")?;
+        let initializer = self.expression()?;
         self.consume(TokenList::Semicolon, "Expect ';' after variable declaration.")?;
         Ok(Stmt::Var { name, initializer })
     }
+
 
     // block -> "{" statement* "}"
     fn block(&mut self) -> PResult<Vec<Stmt>> {
         let mut stmts = Vec::new();
         while !self.check(TokenList::RightBrace) && !self.at_end() {
-            match self.statement() {         
+            match self.declaration() {         
                 Ok(s) => stmts.push(s),
                 Err(e) => {
                     self.errors.push(e);
