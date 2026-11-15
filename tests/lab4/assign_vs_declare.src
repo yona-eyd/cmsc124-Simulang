@@ -1,0 +1,11 @@
+var x = "outer";
+{
+  x = "changed";
+}
+print x; // expect: changed
+{
+  var x = "inner";
+  x = "again";
+  print x; // expect: again
+}
+print x; // expect: changed
