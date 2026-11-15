@@ -44,7 +44,8 @@ Exit codes: 0 when file scans with no errors, 65 when scanner rejects an input, 
 | `law` | Declares a rule that acts on entities |
 | `evolve` | Repeatedly applies laws; replaces loop |
 | `until` | Gives the stopping condition of an `evolve` |
-| `when` | Conditional(the language's if) |
+| `when` | Conditional (the language's if) |
+| `otherwise` | Conditional (the language's else) |
 | `var` | Declares a variable |
 | `print` | Prints a value |
 | `return` | Returns a value from a law |
@@ -292,3 +293,4 @@ approval of your own work.]
 | Activity | What changed in the language |
 |---|---|
 | Lab 1 | Defined the token set: punctuation, arithmetic, comparison and equality operators, `->`, keywords (`entity`, `law`, `evolve`, `until`, `when`, `var`, `print`, `return`, `and`, `or`, `true`, `false`, `nil`), number and string literals, and identifiers |
+| Lab 5 | Added new keyword `Otherwise` for else branch of `When` |

@@ -34,6 +34,7 @@ pub enum TokenList{
     //identifiers
     And,
     When,
+    Otherwise,  // else, added for lab 5
     False,
     True,
     Evolve,

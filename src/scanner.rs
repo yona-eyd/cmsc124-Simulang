@@ -222,6 +222,7 @@ fn keyword_type(text: &str) -> Option<TokenList> {
         "evolve" => TokenList::Evolve,
         "until" => TokenList::Until,
         "when" => TokenList::When,
+        "otherwise" => TokenList::Otherwise,
         "nil" => TokenList::Nil,
         "or" => TokenList::Or,
         "print" => TokenList::Print,
