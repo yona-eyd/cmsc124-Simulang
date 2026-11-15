@@ -120,6 +120,9 @@ impl Parser {
         if self.matches(&[TokenList::When]) {
             return self.when_statement();
         }
+        if self.matches(&[TokenList::Evolve]) {
+            return self.evolve_statement();
+        }
         let expr = self.expression()?;
         self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
         Ok(Stmt::Expression(expr))
@@ -136,6 +139,26 @@ impl Parser {
             None   
         };
         Ok(Stmt::When { condition, then_branch, else_branch })
+    }
+
+    fn evolve_statement(&mut self) -> PResult<Stmt> {
+        // standard while
+        if self.matches(&[TokenList::Until]) {
+            self.consume(TokenList::LeftParen, "Expect '(' after 'until'.")?;
+            let condition = self.expression()?;
+            self.consume(TokenList::RightParen, "Expect ')' after condition.")?;
+            let body = Box::new(self.statement()?);
+            return Ok(Stmt::Evolve { body, condition, check_first: true });
+        }
+
+        // do-while
+        let body = Box::new(self.statement()?);
+        self.consume(TokenList::Until, "Expect 'until' after loop body.")?;
+        self.consume(TokenList::LeftParen, "Expect '(' after 'until'.")?;
+        let condition = self.expression()?;
+        self.consume(TokenList::RightParen, "Expect ')' after condition.")?;
+        self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
+        return Ok(Stmt::Evolve { body, condition, check_first: false });
     }
     
     // expression → assignment

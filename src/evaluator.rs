@@ -215,6 +215,27 @@ impl Interpreter {
                 }
                 Ok(())
             }
+            Stmt::Evolve { body, condition, check_first } => {
+                if *check_first  {
+                    loop { 
+                        let cond = self.evaluate(condition)?;
+                        if is_truthy(&cond) {
+                            break;
+                        } else {
+                            self.execute(body)?;
+                        }
+                    }
+                } else {
+                    loop {
+                        self.execute(body)?;
+                        let cond = self.evaluate(condition)?;
+                        if is_truthy(&cond) {
+                            break;
+                        }
+                    }
+                }
+                Ok(())
+            }
         }
     }
 

@@ -42,6 +42,11 @@ pub enum Stmt {
         then_branch: Box<Stmt>,
         else_branch: Option<Box<Stmt>>
     },
+    Evolve {
+        body: Box<Stmt>,
+        condition: Expr,
+        check_first: bool
+    },
 }
 
 #[derive(Debug)]
@@ -84,6 +89,13 @@ impl fmt::Display for Stmt {
             Stmt::When { condition,then_branch, else_branch } => match else_branch {
                 Some(e) => write!(f, "when {condition} {then_branch} {e}"),
                 None    => write!(f, "(when {condition} {then_branch})"),
+            }
+            Stmt::Evolve { body, condition, check_first } => {
+                if *check_first {
+                    write!(f, "(evolve-until {condition} {body})")      // while, might not execute at all
+                } else {
+                    write!(f, "(evolve {body} until {condition})")      // do-while, executes at least once
+                }
             }
         }
     }
