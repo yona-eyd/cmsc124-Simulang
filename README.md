@@ -135,10 +135,12 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 program     → declaration* EOF
 declaration → varDecl | statement
 varDecl     → "var" IDENTIFIER "=" expression ";"
-statement   → printStmt | exprStmt | block
+statement   → printStmt | exprStmt | block | whenStmt | evolveStmt ;
 printStmt   → "print" expression ";"
 exprStmt    → expression ";"
 block       → "{" declaration* "}"
+whenStmt    → "when" "(" expression ")" statement ( "otherwise" statement )? ;
+evolveStmt  → "evolve" "until" "(" expression ")" statement | "evolve" statement "until" "(" expression ")" ";"
 expression  → assignment
 assignment  → IDENTIFIER "=" assignment | logic_or
 logic_or    → logic_and ( "or" logic_and )*
@@ -154,6 +156,7 @@ primary     → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER | "(" ex
 - A program is a sequence of declarations and statements at the top level
 - A `var` declaration may appear at the top level or inside any block to any depth.
 - A block {...} is a statement and may contain declarations and statements, including more blocks
+- `when` and `evolve` are statements. They may appear at the top level of a program or inside a block, and as the branch or body of another `when` or `evolve`. Their branches and bodies are statements, so a single statement needs no braces.
 
 Notes:
 - Grammar is unambiguous as each level delegates only to the next tighter one, so a level only receive finished subtrees from tighter levels.
@@ -314,4 +317,4 @@ State is mutable because the focus of a rule-based simulation is how values evol
 | Activity | What changed in the language |
 |---|---|
 | Lab 1 | Defined the token set: punctuation, arithmetic, comparison and equality operators, `->`, keywords (`entity`, `law`, `evolve`, `until`, `when`, `var`, `print`, `return`, `and`, `or`, `true`, `false`, `nil`), number and string literals, and identifiers |
-| Lab 5 | Added new keyword `Otherwise` for else branch of `When` |
+| Lab 5 | Added `when` / `otherwise` conditionals and the `evolve` loop in while and do-while forms. Extended the grammar and the `--parse` output for the new statements. |
