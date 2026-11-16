@@ -1,0 +1,4 @@
+{
+  var inner = 1;
+}
+print inner; // expect runtime error: Undefined variable 'inner'.

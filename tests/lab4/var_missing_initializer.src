@@ -1,1 +1,1 @@
-var x = ; // expect error: Expect expression.
+var x; // expect error: Expect '=' after variable name.

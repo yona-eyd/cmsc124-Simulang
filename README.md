@@ -21,14 +21,14 @@ Simulang is a constraint-based language for people who would rather describe a s
 
 | Command | What it does |
 |---|---|
-| `./run <file>` | [Executes a program. Available from Lab 4.] |
+| `./run <file>` | [Executes a program. Only print statements produce output] |
 | `./run --tokenize <file>` | [Prints the token stream.] |
 | `./run --parse <file>` | [Prints the parsed tree.] |
 | `./run --eval <file>` | [Evaluates each expression and prints its value.] |
 | `./run` | [Starts the REPL.] |
 
 
-Exit codes: 0 when file scans with no errors, 65 when scanner rejects an input, 70 on runtime errors.
+Exit codes: 0 when file scans with no errors, 65 when scanner rejects an input, 66 for a missing or unreadable file, 70 on runtime errors.
 
 ## File extension
 
@@ -132,7 +132,13 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 ## Grammar
 
 ```
-program     → ( expression ";" )* EOF
+program     → declaration* EOF
+declaration → varDecl | statement
+varDecl     → "var" IDENTIFIER "=" expression ";"
+statement   → printStmt | exprStmt | block
+printStmt   → "print" expression ";"
+exprStmt    → expression ";"
+block       → "{" declaration* "}"
 expression  → assignment
 assignment  → IDENTIFIER "=" assignment | logic_or
 logic_or    → logic_and ( "or" logic_and )*
@@ -140,12 +146,16 @@ logic_and   → equality ( "and" equality )*
 equality    → comparison ( ( "!=" | "==" ) comparison )*
 comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        → factor ( ( "-" | "+" ) factor )*
-factor      → unary ( ("/" | "*" | "%" ) unary )*
+factor      → unary ( ( "/" | "*" | "%" ) unary )*
 unary       → ( "!" | "-" ) unary | primary
-primary     → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER  | "(" expression ")"
-
+primary     → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER | "(" expression ")"
 ```
 
+- A program is a sequence of declarations and statements at the top level
+- A `var` declaration may appear at the top level or inside any block to any depth.
+- A block {...} is a statement and may contain declarations and statements, including more blocks
+
+Notes:
 - Grammar is unambiguous as each level delegates only to the next tighter one, so a level only receive finished subtrees from tighter levels.
 - Every binary level is left-associative as it is a loop, assignment and unary are right-associative because they recurse on the righ
 - and/or are words with their on two levels
@@ -196,10 +206,11 @@ A tagged enum lets us match on which kind a value is, and the compiler warns us 
 
 ### Scope and bindings
 
-- Redeclaration in the same scope: [allowed or an error]
-- Uninitialized variable holds: [value]
-- Shadowing: [behavior]
-- Undefined name: [static error with exit 65, or runtime error with exit 70]
+- Redeclaration in the same scope: A runtime error (exit 70), since a declaration states a fact. An inner scope may still shadow.
+- Uninitialized variable holds: `var` requires an initializer; `var x;` is a syntax error.
+- Shadowing: A `var` in an inner scope hides an outer binding of the same name until the inner scope ends. The outer binding is unchanged and visible again afterward.
+- Undefined name: Reading or assigning a name that was never declared is a runtime error (exit 70).
+- Scope rule. Lexical (static). Each block creates a new scope, called a Context in the interpreter, linked to the scope it is written inside. Lookup starts in the innermost scope and walks outward, and the innermost binding wins.
 
 ### Control flow and functions
 
@@ -262,20 +273,29 @@ python3 run_tests.py tests/lab1
 ## Sample code
 
 ```
-[a short program]
+var energy = 100;
+var cost = 15;
+print energy;
+{
+  var cost = 40;
+  energy = energy - cost;
+  print energy;
+}
+energy = energy - cost;
+print energy;
 ```
 
 Output:
 
 ```
-[its output]
+100
+60
+45
 ```
 
 ## Design rationale
 
-[Why the language is the way it is. Cover the choices that surprised you, the
-features you cut, and the decisions you reversed. Specific reasons, not
-approval of your own work.]
+State is mutable because the focus of a rule-based simulation is how values evolve as laws are applied. Representing updates through rebinding would force every law to handle that complexity explicitly. Declarations are treated as statements of fact, so redeclaring a name within the same scope is considered an error rather than silently replacing the existing binding. Likewise, var declarations require an initializer, ensuring that every name is associated with a value from the moment it is introduced. Names are resolved at the point of use rather than before execution, allowing laws to reference definitions that may appear elsewhere in the program without requiring an additional preprocessing phase. The scope chain is referred to as a Context rather than an environment to clearly distinguish it from the simulation's world model.
 
 ## Known limitations
 
@@ -286,6 +306,7 @@ approval of your own work.]
 5. REPL scans one line at a time. A token split across multiple lines is read as undfinished and returns an error immediately.
 6. AST formats number with Rust's `{:?}` for `f64`, which switches to exponent form for values greater than or equal to 1e16 or less than 1e-4. (e.g. `10000000000000000;` prints `1e16`, `0.00001;` prints `1e-5`). Values in between print normally. 
 7. Parser only accepts and expects one expression per line since semicolon indicates end of expression.
+8. A variable's storage ends when its block exits;
 
 ## Changelog
 
