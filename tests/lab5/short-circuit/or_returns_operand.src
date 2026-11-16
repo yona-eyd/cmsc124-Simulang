@@ -1,0 +1,2 @@
+print 6 or 7;
+// expect: 6
