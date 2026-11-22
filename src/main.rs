@@ -122,7 +122,7 @@ fn run_program(source: &str) -> u8 {
 
     let mut interpreter = Interpreter::new();
     for stmt in &program.0 {
-        if let Err(e) = interpreter.execute(stmt) {
+        if let Err(e) = interpreter.run(stmt) {
             eprintln!("{e}");
             return 70;
         }
@@ -159,7 +159,7 @@ fn run_prompt() -> ExitCode {
                 Ok(stmt) => {
                     let result = match &stmt {
                         Stmt::Expression(e) => interpreter.evaluate(e).map(|v| println!("{v}")),
-                        other => interpreter.execute(other),
+                        other => interpreter.run(other),
                     };
                     if let Err(e) = result {
                         eprintln!("{e}");

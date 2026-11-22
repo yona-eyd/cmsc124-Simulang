@@ -22,6 +22,7 @@ pub struct RuntimeError {
     pub message: String,
 }
 
+
 impl RuntimeError {
     pub fn new(token: &Token, message: &str) -> Self {
         RuntimeError { line: token.line, message: message.to_string() }
@@ -33,6 +34,20 @@ impl fmt::Display for RuntimeError {
         write!(f, "[line {}] Runtime error: {}", self.line, self.message)
     }
 }
+
+// two ways a statement can stop early: error or a return
+pub enum Interrupt {
+    Runtime(RuntimeError),                  // a real error
+    Return { value: Value, line: usize }    // a return statement: line is for error msgs
+}
+
+// lets self.evaluate(e)? inside execute turn a RuntimeError into an Interrupt
+impl From<RuntimeError> for Interrupt {
+    fn from(e: RuntimeError) -> Self {
+        Interrupt::Runtime(e)
+    }
+}
+
 
 pub fn is_equal(a: &Value, b: &Value) -> bool {
     match(a,b) {
@@ -200,7 +215,7 @@ impl Interpreter {
         }
     }
 
-    pub fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+    pub fn execute(&mut self, stmt: &Stmt) -> Result<(), Interrupt> {
         match stmt {
             Stmt::Expression(e) => { self.evaluate(e)?; Ok(()) }
             Stmt::Print(e) => {
@@ -211,7 +226,8 @@ impl Interpreter {
             Stmt::Var { name, initializer } => {
                 // initializer first, so `var a = a;` sees an outer a
                 let value = self.evaluate(initializer)?;
-                self.context.borrow_mut().define(name, value)
+                self.context.borrow_mut().define(name, value)?;     // added ? to convert error into interrupt
+                Ok(())
             }
             Stmt::Block(stmts) => {
                 let inner = Context::new_enclosed(&self.context);
@@ -247,18 +263,35 @@ impl Interpreter {
                 }
                 Ok(())
             }
-            // execute
-            // temporary; replace when function runtimeis written
-            Stmt::Function(_) | Stmt::Return { .. } => Ok(()),
+            Stmt::Return { keyword, value } => {
+                // decide what the function hands back
+                let result = if let Some(expr) = value {
+                    self.evaluate(expr)?        // return expr -> evaluate it
+                } else {
+                    Value::Nil                  // bare return -> nil
+                };
+
+                Err(Interrupt::Return { value: result, line: keyword.line })
+            }
+            Stmt::Function(_) => Ok(()),
         }
     }
 
     // installs `inner`, runs the statements, then always restores the previous scope
     // in 5PR3: made it reachable from other files (pub(crate))
-    pub(crate) fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), RuntimeError> {
+    pub(crate) fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), Interrupt> {
         let previous = std::mem::replace(&mut self.context, inner);
         let result = stmts.iter().try_for_each(|s| self.execute(s));
         self.context = previous;
         result
+    }
+
+    // runs one statement for main.rs: turns an Interrupt back to a plain RuntimeError
+    pub fn run(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+        match self.execute(stmt) {
+            Ok(()) => Ok(()),
+            Err(Interrupt::Runtime(e)) => Err(e),
+            Err(Interrupt::Return { line, .. }) => Err(RuntimeError { line, message: "Can't return from top-level code.".to_string()})
+        }
     }
 }
