@@ -1,0 +1,16 @@
+// mutual recursion: each law calls the other
+// both exist in the global scope by call time
+
+law isEven(n) {
+    when (n == 0) return true;
+    return isOdd(n - 1);
+}
+
+law isOdd(n) {
+    when (n == 0) return false;
+    return isEven(n - 1);
+}
+
+print isEven(4);    // expect: true
+print isEven(3);    // expect: false
+print isOdd(7);     //expect: true

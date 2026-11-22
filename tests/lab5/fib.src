@@ -1,0 +1,13 @@
+// recursion: a law calls itself; base case (n <= 1) stops it
+
+law fib(n) {
+    when (n <= 1) return n;         // base case: return signal leavs the when
+    return fib(n - 1) + fib(n - 2); // recursive case
+}
+
+print fib(0);   // expect: 0
+print fib(1);   // expect: 1
+print fib(2);   // expect: 1
+print fib(3);   // expect: 2
+print fib(5);   // expect: 5
+print fib(10);  // expect: 55
