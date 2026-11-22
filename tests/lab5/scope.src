@@ -1,0 +1,16 @@
+// lexical scope: greet sees the greeting from where it was written, not from its caller
+
+var greeting = "Hello!";
+
+law greet() {
+    print greeting;
+}
+
+law rude() {
+    var greeting = "Go away!";      // rude's own local; greet cannot see it
+    greet();
+}
+
+rude();     // expect: Hello!
+print greeting;     // expect: Hello!
+
