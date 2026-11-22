@@ -2,13 +2,18 @@ use crate::tokens::{Token, TokenList};
 use crate::ast::{Expr,Stmt};
 use crate::context::{Context, ContextRef};
 use std::fmt;
+use std::rc::Rc;
+use crate::callable::Callable;
 
-#[derive(Debug, Clone, PartialEq)]
+// in 5PR3: Debug + PartialEq removed
+// compiler can't auto-write them for a trait object 
+#[derive(Clone)]    
 pub enum Value {
     Num(f64),
     Str(String),
     Bool(bool),
     Nil,
+    Callable(Rc<dyn Callable>),
 }
 
 #[derive(Debug)]
@@ -35,6 +40,8 @@ pub fn is_equal(a: &Value, b: &Value) -> bool {
         (Value::Str(x), Value::Str(y)) => x == y,
         (Value::Bool(x), Value::Bool(y)) => x == y,
         (Value::Nil, Value::Nil) => true,
+        // returns true only when x and y are the very same object
+        (Value::Callable(x), Value::Callable(y)) => Rc::ptr_eq(x, y),
         _ => false,
     }
 }
@@ -50,10 +57,11 @@ pub fn is_truthy(value: &Value) -> bool {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Num(n) => write!(f, "{}", n),
-            Value::Str(s) => write!(f, "{}", s),
-            Value::Bool(b) => write!(f, "{}", b),
-            Value::Nil => write!(f, "nil"),
+            Value::Num(n)       => write!(f, "{}", n),
+            Value::Str(s)       => write!(f, "{}", s),
+            Value::Bool(b)      => write!(f, "{}", b),
+            Value::Nil          => write!(f, "nil"),
+            Value::Callable(c)  => write!(f, "{}", c.describe())
         }
     }
 }
@@ -246,7 +254,8 @@ impl Interpreter {
     }
 
     // installs `inner`, runs the statements, then always restores the previous scope
-    fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), RuntimeError> {
+    // in 5PR3: made it reachable from other files (pub(crate))
+    pub(crate) fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), RuntimeError> {
         let previous = std::mem::replace(&mut self.context, inner);
         let result = stmts.iter().try_for_each(|s| self.execute(s));
         self.context = previous;

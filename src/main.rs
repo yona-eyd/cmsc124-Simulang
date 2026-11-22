@@ -5,6 +5,7 @@ mod evaluator;
 mod ast;
 mod helpers;
 mod context;
+mod callable;
 
 use scanner::Scanner;
 use std::env;
