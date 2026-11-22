@@ -109,7 +109,7 @@ impl fmt::Display for Stmt {
             }
             Stmt::Var { name, initializer } => write!(f, "(var {} {initializer})", name.lexeme),
             Stmt::When { condition,then_branch, else_branch } => match else_branch {
-                Some(e) => write!(f, "when {condition} {then_branch} {e}"),
+                Some(e) => write!(f, "(when {condition} {then_branch} {e})"),
                 None    => write!(f, "(when {condition} {then_branch})"),
             }
             Stmt::Evolve { body, condition, check_first } => {
