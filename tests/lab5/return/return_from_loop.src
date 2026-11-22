@@ -1,0 +1,11 @@
+// return leaves a function from inside a loop
+law find() {
+    var i = 0;
+    evolve until (false) {      // never stops by its own condition
+        when (i == 3) return i;
+        i = i + 1;
+    }
+    return -1;                  // unreachable if return propagates through the loop
+}
+
+print find();   // expect: 3

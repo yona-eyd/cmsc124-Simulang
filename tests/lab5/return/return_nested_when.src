@@ -1,0 +1,12 @@
+// return leaves a function from inside nested when statements
+law size(n) {
+    when (n > 0) {
+        when (n > 5) return "big";
+        return "small";
+    }
+    return "zero";
+}
+
+print size(10);   // expect: big
+print size(3);    // expect: small
+print size(0);    // expect: zero

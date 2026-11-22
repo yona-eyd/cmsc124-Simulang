@@ -1,0 +1,6 @@
+// a bare `return;` and falling off the end both give nil
+law early() { return; }
+law falls() { var x = 1; }
+
+print early();   // expect: nil
+print falls();   // expect: nil
