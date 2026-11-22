@@ -209,9 +209,31 @@ impl Interpreter {
                 self.context.borrow_mut().assign(name, value.clone())?;
                 Ok(value)   // assignment is an expression: its value is the assigned value
             }
-            // evaluate
-            // temporary: gives a clean runtime error instead of panic
-            Expr::Call { paren, .. } => Err(RuntimeError::new(paren, "Calls are not supported yet.")),
+
+            // a call expression: evaluate callee & arguments, check them, then run the function
+            Expr::Call { callee, paren, arguments } => {
+                let callee_value = self.evaluate(callee)?;
+                
+                // evaluate arguments left to right into a Vec<Value>
+                let mut args = Vec::new();
+                for arg in arguments {
+                    args.push(self.evaluate(arg)?);
+                }
+
+                // check if function is callable
+                // only callables can be called
+                match callee_value {
+                    Value::Callable(function) => {
+                        // arity check: expected (what the law declares) but got (what was passed)
+                        if args.len() != function.arity() {
+                            Err(RuntimeError::new(paren, &format!("Expected {} arguments but got {}.", function.arity(), args.len())))
+                        } else {
+                            function.call(self, args)
+                        }
+                    }
+                    _ => Err(RuntimeError::new(paren, "Can only call functions."))
+                }
+            }
         }
     }
 
