@@ -1,5 +1,6 @@
 use crate::tokens::Token;
 use std::fmt;
+use std::rc::Rc;
 
 //---------------AST------------------------
 //expression node, printed in prefix form
@@ -29,6 +30,11 @@ pub enum Expr {
         name:   Token,
         value: Box<Expr>
     },
+    Call {
+        callee: Box<Expr>,      // any expression because call is just "(" applied to whatver cme before it
+        paren: Token,           // closing ")"
+        arguments: Vec<Expr>
+    },
 }
 
 #[derive(Debug)]
@@ -47,6 +53,17 @@ pub enum Stmt {
         condition: Expr,
         check_first: bool
     },
+    Function(Rc<FunctionDecl>),     // law name(params) { body }
+    Return { keyword: Token, value: Option<Expr> },     // keyword for error line numbers, value is None for only 'return'
+}
+
+
+// for function declaration (law)
+#[derive(Debug)]
+pub struct FunctionDecl {
+    pub name: Token,
+    pub params: Vec<Token>,     // in order,its length is the arity
+    pub body: Vec<Stmt>,
 }
 
 #[derive(Debug)]
@@ -68,6 +85,11 @@ impl fmt::Display for Expr {
             Expr::Binary {left,op, right} | Expr::Logical{left, op, right} => {write! (f, "({} {left} {right})", op.lexeme)}
             Expr:: Assign {name, value} => write!(f, "(= {} {value})", name.lexeme),
             Expr::Grouping(e) => write!(f, "(group {e})"),
+            Expr::Call { callee, arguments, .. } => {
+                write!(f, "(call {callee}")?;
+                for a in arguments { write!(f, " {a}")?; }
+                write!(f, ")")
+            }
         }
     }
 }
@@ -97,6 +119,21 @@ impl fmt::Display for Stmt {
                     write!(f, "(evolve {body} until {condition})")      // do-while, executes at least once
                 }
             }
+            Stmt::Function(d) => {
+                // (law name (params) body...)
+                write!(f, "(law {} (", d.name.lexeme)?;
+                for (i, p) in d.params.iter().enumerate() {
+                    if i > 0 { write!(f, " ")?; }   // spaces between params, none before the first
+                    write!(f, "{}", p.lexeme)?;
+                }
+                write!(f, ")")?;
+                for s in &d.body { write!(f, " {s}")?; }
+                write!(f, ")")
+            }
+            Stmt::Return { value, .. } => match value {
+                Some(v) => write!(f, "(return {v})"),
+                None    => write!(f, "(return)"),
+            },
         }
     }
     

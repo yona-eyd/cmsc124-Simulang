@@ -1,6 +1,7 @@
 use crate::tokens::{Literal, Token, TokenList};
 use std::fmt;
-use crate::ast::{Expr, Program, Stmt};
+use crate::ast::{Expr, FunctionDecl, Program, Stmt};
+use std::rc::Rc;
 
 //----------------errors-----------------------
 
@@ -78,6 +79,11 @@ impl Parser {
         if self.matches(&[TokenList::Var]) {
             return self.var_declaration();
         }
+        // law is a declaration, not a statement
+        // so it is legal only where declaration() is called: top level + inside blocks
+        if self.matches(&[TokenList::Law]) {
+            return self.function();
+        }
         self.statement()
     }
 
@@ -90,6 +96,26 @@ impl Parser {
         Ok(Stmt::Var { name, initializer })
     }
 
+    // funDecl -> "law" IDENTIFIER "(" parameters? ")" block
+    fn function(&mut self) -> PResult<Stmt> {
+        let name = self.consume(TokenList::Identifier, "Expect function name.")?;
+        self.consume(TokenList::LeftParen, "Expect '(' after function name.")?;
+        let mut params = Vec::new();
+        if !self.check(TokenList::RightParen) {
+            loop {
+                params.push(self.consume(TokenList::Identifier, "Expect parameter name.")?);
+                if !self.matches(&[TokenList::Comma]) {
+                    break;
+                }
+            }
+        }
+        self.consume(TokenList::RightParen, "Expect ')' after parameters.")?;
+        // block() expects "{" to be consumed already
+        // but it's the one who consumes "}"
+        self.consume(TokenList::LeftBrace, "Expect '{' before function body.")?;
+        let body = self.block()?;
+        Ok(Stmt::Function(Rc::new(FunctionDecl { name, params, body })))
+    }
 
     // block -> "{" statement* "}"
     fn block(&mut self) -> PResult<Vec<Stmt>> {
@@ -122,6 +148,9 @@ impl Parser {
         }
         if self.matches(&[TokenList::Evolve]) {
             return self.evolve_statement();
+        }
+        if self.matches(&[TokenList::Return]) {
+            return self.return_statement();
         }
         let expr = self.expression()?;
         self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
@@ -159,6 +188,21 @@ impl Parser {
         self.consume(TokenList::RightParen, "Expect ')' after condition.")?;
         self.consume(TokenList::Semicolon, "Expect ';' after expression.")?;
         return Ok(Stmt::Evolve { body, condition, check_first: false });
+    }
+
+    // returnStmt -> "return" expression? ";"
+    fn return_statement(&mut self) -> PResult<Stmt> {
+        // "return" token was jsut matched, so it is now previous()
+        let keyword = self.previous().clone();
+        // a bare 'return;' has no value; it will evaluate to nil at runtime
+        let value = if !self.check(TokenList::Semicolon) {
+            Some(self.expression()?)
+        }
+        else {
+            None
+        };
+        self.consume(TokenList::Semicolon, "Expect ';' after return value.")?;
+        Ok(Stmt::Return { keyword, value })
     }
     
     // expression → assignment
@@ -255,7 +299,33 @@ impl Parser {
             let right = self.unary()?; //right-associative
             return Ok(Expr::Unary {op, right:Box::new(right)});
         }
-        self.primary()
+        self.call()
+    }  
+    
+    // call -> primary ( "(" arguments? ")" )*
+    fn call(&mut self) -> PResult<Expr> {
+        let mut expr = self.primary()?;
+        while self.matches(&[TokenList::LeftParen]) {
+            expr = self.finish_call(expr)?;
+        }
+        Ok(expr)
+    }
+
+    // parses part after "(": arguments? ")"
+    // split from above for readability
+    fn finish_call(&mut self, callee: Expr) -> PResult<Expr> {
+        let mut arguments = Vec::new();
+        // guard, what allows zero arguments like f()
+        if !self.check(TokenList::RightParen) {
+            loop {
+                arguments.push(self.expression()?);     // read one item
+                if !self.matches(&[TokenList::Comma]) {
+                    break;      // no comma = list is over
+                }
+            }
+        }
+        let paren = self.consume(TokenList::RightParen, "Expect ')' after arguments.")?;
+        Ok(Expr::Call { callee: Box::new(callee), paren, arguments })
     }
 
     //primary -> number | string |"true" |"false"|"nil" |identifier| ()
