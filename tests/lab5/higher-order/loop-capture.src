@@ -1,0 +1,22 @@
+// closures made inside a loop: what do they see?
+var first = nil;      // outer slots to keep one closure from each iteration
+var second = nil;
+var i = 0;            // declared OUTSIDE the loop: one shared variable
+
+evolve until (i == 2) {
+    var captured = i;                 // declared INSIDE the body: new one each iteration
+    law show() {
+        print captured;               // per-iteration copy?
+        print i;                      // the shared outer variable?
+    }
+    when (i == 0) first = show;       // keep the closure from iteration 0
+    when (i == 1) second = show;      // keep the closure from iteration 1
+    i = i + 1;
+}
+
+first();      
+// expect: 0
+// expect: 2
+second();
+// expect: 1
+// expect: 2
