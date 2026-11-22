@@ -1,0 +1,2 @@
+// a return outside any law is a runtime error (exit 70, decided in step 2)
+return 1;   // expect runtime error: Can't return from top-level code.
