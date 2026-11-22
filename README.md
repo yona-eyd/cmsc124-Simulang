@@ -1,4 +1,4 @@
-# Extension
+# SimuLang - A Simulator Language
 
 ## Creators
 
@@ -133,14 +133,18 @@ Frozen as of Lab 1; changes are recorded in the changelog.
 
 ```
 program     → declaration* EOF
-declaration → varDecl | statement
+declaration → funDecl | varDecl | statement
+funDecl     → "law" IDENTIFIER "(" parameters? ")" block
+parameters  → IDENTIFIER ( "," IDENTIFIER )*
 varDecl     → "var" IDENTIFIER "=" expression ";"
-statement   → printStmt | exprStmt | block | whenStmt | evolveStmt ;
+statement   → printStmt | exprStmt | block | whenStmt | evolveStmt | returnStmt
 printStmt   → "print" expression ";"
 exprStmt    → expression ";"
 block       → "{" declaration* "}"
 whenStmt    → "when" "(" expression ")" statement ( "otherwise" statement )? ;
-evolveStmt  → "evolve" "until" "(" expression ")" statement | "evolve" statement "until" "(" expression ")" ";"
+evolveStmt  → "evolve" "until" "(" expression ")" statement 
+              | "evolve" statement "until" "(" expression ")" ";"
+returnStmt  → "return" expression? ";"
 expression  → assignment
 assignment  → IDENTIFIER "=" assignment | logic_or
 logic_or    → logic_and ( "or" logic_and )*
@@ -150,20 +154,23 @@ comparison  → term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        → factor ( ( "-" | "+" ) factor )*
 factor      → unary ( ( "/" | "*" | "%" ) unary )*
 unary       → ( "!" | "-" ) unary | primary
+call        → primary ( "(" arguments? ")" )*
 primary     → NUMBER | STRING | "true" | "false" | "nil" | IDENTIFIER | "(" expression ")"
 ```
 
-- A program is a sequence of declarations and statements at the top level
-- A `var` declaration may appear at the top level or inside any block to any depth.
-- A block {...} is a statement and may contain declarations and statements, including more blocks
+- A program is a sequence of declarations and statements at the top level.
+- `var` and `law` declarations may appear at the top level or inside any block to any depth. They may not be the direct body of a `when` or `evolve`, because those take a statement. Use braces to put a declaration there.
+- A block `{...}` is a statement and may contain declarations and statements, including more blocks.
 - `when` and `evolve` are statements. They may appear at the top level of a program or inside a block, and as the branch or body of another `when` or `evolve`. Their branches and bodies are statements, so a single statement needs no braces.
+- `return` is parsed anywhere a statement is allowed. Whether it is legal is decided at runtime: a `return` outside any `law` is a runtime error.
+- A call is a postfix `(...)` applied to any expression, so `f(1)(2)` is a call whose callee is a call.
 
 Notes:
 - Grammar is unambiguous as each level delegates only to the next tighter one, so a level only receive finished subtrees from tighter levels.
-- Every binary level is left-associative as it is a loop, assignment and unary are right-associative because they recurse on the righ
-- and/or are words with their on two levels
-- % sits right with * and /
-- ; terminates each expression
+- Every binary level is left-associative as it is a loop. Assignment and unary are right-associative because they recurse on the right.
+- `and` and `or` are words, each with their own level.
+- `%` sits right with `*` and `/`.
+- `;` terminates every simple statement: expression statements, `print`, `var`, `return`. and the do-while form of `evolve`.
 
 
 ## Parse output format
@@ -217,11 +224,13 @@ A tagged enum lets us match on which kind a value is, and the compiler warns us 
 
 ### Control flow and functions
 
-- Logical operators return: the operand
-- Dangling else binds to: [which if]
-- Closure capture of a loop variable: [per iteration, or shared]
-- Function with no return statement produces: [value]
-- Arity mismatch: [message and exit code]
+- Logical operators return the operand.
+- Dangling `otherwise` (else) binds to the nearest `when` (if)
+- Per-iteration capture for variables declared inside a block-bodied loop, shared for outer variables.
+- A function with no `return` statement produces `nil`.
+- Arity mismatch: `Expected N arguments but got M.`, exit 70.
+- Non-callable gives `Can only call functions.`
+- A top-level `return` is a runtime error.
 
 ## Native functions
 
