@@ -3,7 +3,7 @@ use crate::ast::{Expr,Stmt};
 use crate::context::{Context, ContextRef};
 use std::fmt;
 use std::rc::Rc;
-use crate::callable::Callable;
+use crate::callable::{Callable, UserFunction};
 
 // in 5PR3: Debug + PartialEq removed
 // compiler can't auto-write them for a trait object 
@@ -273,7 +273,15 @@ impl Interpreter {
 
                 Err(Interrupt::Return { value: result, line: keyword.line })
             }
-            Stmt::Function(_) => Ok(()),
+            Stmt::Function(decl) => {
+                // builds function from declaration + CURRENT environment (interpreter's)
+                let function = UserFunction::new(Rc::clone(decl), Rc::clone(&self.context));
+                // wrap it so it counts as a value
+                let value   = Value::Callable(Rc::new(function));
+                // store it in current environment under the law's name
+                self.context.borrow_mut().define(&decl.name, value)?;
+                Ok(())
+            }
         }
     }
 
