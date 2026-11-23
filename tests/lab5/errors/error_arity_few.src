@@ -1,0 +1,3 @@
+// calling with too few arguments is a runtime error
+law add(a, b) { return a + b; }
+add(1);   // expect runtime error: Expected 2 arguments but got 1.

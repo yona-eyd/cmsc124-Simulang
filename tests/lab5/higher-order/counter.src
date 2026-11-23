@@ -1,0 +1,16 @@
+law makeCounter() {
+    var count = 0;
+    law increment() {
+        count = count + 1;
+        return count;
+    }
+    return increment;
+}
+
+var counter = makeCounter();
+print counter();    // expect: 1
+print counter();    // expect: 2
+print counter();    // expect: 3
+
+var other = makeCounter();
+print other();    // expect: 1

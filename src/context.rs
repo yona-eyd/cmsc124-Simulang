@@ -1,3 +1,9 @@
+// ---------------------------------------------------------------------------
+// context.rs - interpreter's memory, defines the environment
+// environment: data structure that stores the languge's variables and 
+//              decides which one a name refers to
+// ---------------------------------------------------------------------------
+
 use crate::evaluator::{RuntimeError, Value};
 use crate::tokens::Token;
 use std::cell::RefCell;

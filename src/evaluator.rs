@@ -2,13 +2,18 @@ use crate::tokens::{Token, TokenList};
 use crate::ast::{Expr,Stmt};
 use crate::context::{Context, ContextRef};
 use std::fmt;
+use std::rc::Rc;
+use crate::callable::{Callable, UserFunction};
 
-#[derive(Debug, Clone, PartialEq)]
+// in 5PR3: Debug + PartialEq removed
+// compiler can't auto-write them for a trait object 
+#[derive(Clone)]    
 pub enum Value {
     Num(f64),
     Str(String),
     Bool(bool),
     Nil,
+    Callable(Rc<dyn Callable>),
 }
 
 #[derive(Debug)]
@@ -16,6 +21,7 @@ pub struct RuntimeError {
     pub line: usize,
     pub message: String,
 }
+
 
 impl RuntimeError {
     pub fn new(token: &Token, message: &str) -> Self {
@@ -29,12 +35,28 @@ impl fmt::Display for RuntimeError {
     }
 }
 
+// two ways a statement can stop early: error or a return
+pub enum Interrupt {
+    Runtime(RuntimeError),                  // a real error
+    Return { value: Value, line: usize }    // a return statement: line is for error msgs
+}
+
+// lets self.evaluate(e)? inside execute turn a RuntimeError into an Interrupt
+impl From<RuntimeError> for Interrupt {
+    fn from(e: RuntimeError) -> Self {
+        Interrupt::Runtime(e)
+    }
+}
+
+
 pub fn is_equal(a: &Value, b: &Value) -> bool {
     match(a,b) {
         (Value::Num(x), Value::Num(y)) => x == y,
         (Value::Str(x), Value::Str(y)) => x == y,
         (Value::Bool(x), Value::Bool(y)) => x == y,
         (Value::Nil, Value::Nil) => true,
+        // returns true only when x and y are the very same object
+        (Value::Callable(x), Value::Callable(y)) => Rc::ptr_eq(x, y),
         _ => false,
     }
 }
@@ -50,10 +72,11 @@ pub fn is_truthy(value: &Value) -> bool {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Num(n) => write!(f, "{}", n),
-            Value::Str(s) => write!(f, "{}", s),
-            Value::Bool(b) => write!(f, "{}", b),
-            Value::Nil => write!(f, "nil"),
+            Value::Num(n)       => write!(f, "{}", n),
+            Value::Str(s)       => write!(f, "{}", s),
+            Value::Bool(b)      => write!(f, "{}", b),
+            Value::Nil          => write!(f, "nil"),
+            Value::Callable(c)  => write!(f, "{}", c.describe())
         }
     }
 }
@@ -186,13 +209,35 @@ impl Interpreter {
                 self.context.borrow_mut().assign(name, value.clone())?;
                 Ok(value)   // assignment is an expression: its value is the assigned value
             }
-            // evaluate
-            // temporary: gives a clean runtime error instead of panic
-            Expr::Call { paren, .. } => Err(RuntimeError::new(paren, "Calls are not supported yet.")),
+
+            // a call expression: evaluate callee & arguments, check them, then run the function
+            Expr::Call { callee, paren, arguments } => {
+                let callee_value = self.evaluate(callee)?;
+                
+                // evaluate arguments left to right into a Vec<Value>
+                let mut args = Vec::new();
+                for arg in arguments {
+                    args.push(self.evaluate(arg)?);
+                }
+
+                // check if function is callable
+                // only callables can be called
+                match callee_value {
+                    Value::Callable(function) => {
+                        // arity check: expected (what the law declares) but got (what was passed)
+                        if args.len() != function.arity() {
+                            Err(RuntimeError::new(paren, &format!("Expected {} arguments but got {}.", function.arity(), args.len())))
+                        } else {
+                            function.call(self, args)
+                        }
+                    }
+                    _ => Err(RuntimeError::new(paren, "Can only call functions."))
+                }
+            }
         }
     }
 
-    pub fn execute(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+    pub fn execute(&mut self, stmt: &Stmt) -> Result<(), Interrupt> {
         match stmt {
             Stmt::Expression(e) => { self.evaluate(e)?; Ok(()) }
             Stmt::Print(e) => {
@@ -203,7 +248,8 @@ impl Interpreter {
             Stmt::Var { name, initializer } => {
                 // initializer first, so `var a = a;` sees an outer a
                 let value = self.evaluate(initializer)?;
-                self.context.borrow_mut().define(name, value)
+                self.context.borrow_mut().define(name, value)?;     // added ? to convert error into interrupt
+                Ok(())
             }
             Stmt::Block(stmts) => {
                 let inner = Context::new_enclosed(&self.context);
@@ -239,17 +285,43 @@ impl Interpreter {
                 }
                 Ok(())
             }
-            // execute
-            // temporary; replace when function runtimeis written
-            Stmt::Function(_) | Stmt::Return { .. } => Ok(()),
+            Stmt::Return { keyword, value } => {
+                // decide what the function hands back
+                let result = if let Some(expr) = value {
+                    self.evaluate(expr)?        // return expr -> evaluate it
+                } else {
+                    Value::Nil                  // bare return -> nil
+                };
+
+                Err(Interrupt::Return { value: result, line: keyword.line })
+            }
+            Stmt::Function(decl) => {
+                // builds function from declaration + CURRENT environment (interpreter's)
+                let function = UserFunction::new(Rc::clone(decl), Rc::clone(&self.context));
+                // wrap it so it counts as a value
+                let value   = Value::Callable(Rc::new(function));
+                // store it in current environment under the law's name
+                self.context.borrow_mut().define(&decl.name, value)?;
+                Ok(())
+            }
         }
     }
 
     // installs `inner`, runs the statements, then always restores the previous scope
-    fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), RuntimeError> {
+    // in 5PR3: made it reachable from other files (pub(crate))
+    pub(crate) fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), Interrupt> {
         let previous = std::mem::replace(&mut self.context, inner);
         let result = stmts.iter().try_for_each(|s| self.execute(s));
         self.context = previous;
         result
+    }
+
+    // runs one statement for main.rs: turns an Interrupt back to a plain RuntimeError
+    pub fn run(&mut self, stmt: &Stmt) -> Result<(), RuntimeError> {
+        match self.execute(stmt) {
+            Ok(()) => Ok(()),
+            Err(Interrupt::Runtime(e)) => Err(e),
+            Err(Interrupt::Return { line, .. }) => Err(RuntimeError { line, message: "Can't return from top-level code.".to_string()})
+        }
     }
 }

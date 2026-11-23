@@ -1,0 +1,17 @@
+// functions are values: pass one as an argument, return one as a result
+law apply(f, x) { return f(x); }      // takes a function as an argument
+law double(n) { return n * 2; }
+
+law makeAdder(base) {                 // returns a function (a closure over base)
+    law add(x) { return base + x; }
+    return add;
+}
+
+var addTwo = makeAdder(2);
+var addTen = makeAdder(10);
+
+print apply(double, 4);    // expect: 8
+print apply(addTwo, 3);    // expect: 5
+print apply(addTen, 3);    // expect: 13
+print apply(addTwo, 3);    // expect: 5
+print makeAdder(100)(5);   // expect: 105

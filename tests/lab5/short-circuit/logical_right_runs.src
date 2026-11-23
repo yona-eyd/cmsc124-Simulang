@@ -1,0 +1,12 @@
+// the right operand IS evaluated when the left side doesn't decide the result
+law mark(v) {
+    print "evaluated";
+    return v;
+}
+
+print true and mark(5);
+// expect: evaluated 
+// expect: 5
+print false or mark(7);
+// expect: evaluated
+// expect: 7
