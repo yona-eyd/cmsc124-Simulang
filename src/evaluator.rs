@@ -328,7 +328,6 @@ impl Interpreter {
     }
 
     // installs `inner`, runs the statements, then always restores the previous scope
-    // in 5PR3: made it reachable from other files (pub(crate))
     pub(crate) fn execute_block(&mut self, stmts: &[Stmt], inner: ContextRef) -> Result<(), Interrupt> {
         let previous = std::mem::replace(&mut self.context, inner);
         let result = stmts.iter().try_for_each(|s| self.execute(s));

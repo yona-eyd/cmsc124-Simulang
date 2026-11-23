@@ -1,8 +1,7 @@
 use crate::callable::Callable;
 use crate::evaluator::{Interpreter, RuntimeError, Value};
 
-// A native is host (Rust) code exposed to .cord. It implements Callable, so
-// calls, arity checks and first-class use go through the same path as laws.
+//implements Callable, so calls, arity checks and first-class use go through the same path as laws.
 #[derive(Debug, Clone, Copy)]
 pub struct NativeFn {
     pub name: &'static str,
@@ -17,7 +16,6 @@ impl Callable for NativeFn {
 
     fn call(&self, interpreter: &mut Interpreter, args: Vec<Value>) -> Result<Value, RuntimeError> {
         // natives don't know the call's line, so they report line 0;
-        // Expr::Call fills in the real line from the ")" token
         (self.func)(interpreter, &args)
             .map_err(|message| RuntimeError { line: 0, message })
     }
