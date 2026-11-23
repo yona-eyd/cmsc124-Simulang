@@ -4,6 +4,7 @@ use crate::context::{Context, ContextRef};
 use std::fmt;
 use std::rc::Rc;
 use crate::callable::{Callable, UserFunction};
+use crate::natives::{self, NativeFn};
 
 // in 5PR3: Debug + PartialEq removed
 // compiler can't auto-write them for a trait object 
@@ -14,6 +15,7 @@ pub enum Value {
     Bool(bool),
     Nil,
     Callable(Rc<dyn Callable>),
+    Native(&'static NativeFn),
 }
 
 #[derive(Debug)]
@@ -57,6 +59,7 @@ pub fn is_equal(a: &Value, b: &Value) -> bool {
         (Value::Nil, Value::Nil) => true,
         // returns true only when x and y are the very same object
         (Value::Callable(x), Value::Callable(y)) => Rc::ptr_eq(x, y),
+        (Value::Native(x), Value::Native(y)) => std::ptr::eq(*x, *y),
         _ => false,
     }
 }
@@ -76,7 +79,8 @@ impl fmt::Display for Value {
             Value::Str(s)       => write!(f, "{}", s),
             Value::Bool(b)      => write!(f, "{}", b),
             Value::Nil          => write!(f, "nil"),
-            Value::Callable(c)  => write!(f, "{}", c.describe())
+            Value::Callable(c)  => write!(f, "{}", c.describe()),
+            Value::Native(n) => write!(f, "<native {}>", n.name),
         }
     }
 }
