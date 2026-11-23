@@ -1,49 +1,71 @@
+use crate::callable::Callable;
 use crate::evaluator::{Interpreter, RuntimeError, Value};
-use crate::tokens::Token;
 
-#[derive(Debug)]
+// A native is host (Rust) code exposed to .cord. It implements Callable, so
+// calls, arity checks and first-class use go through the same path as laws.
+#[derive(Debug, Clone, Copy)]
 pub struct NativeFn {
     pub name: &'static str,
     pub arity: usize,
-    pub func: fn(&mut Interpreter, &[Value], &Token) -> Result<Value, RuntimeError>,
+    pub func: fn(&mut Interpreter, &[Value]) -> Result<Value, String>,
 }
 
-// two natives are equal only if they are the same registered entry
-impl PartialEq for NativeFn {
-    fn eq(&self, other: &Self) -> bool { std::ptr::eq(self, other) }
+impl Callable for NativeFn {
+    fn arity(&self) -> usize {
+        self.arity
+    }
+
+    fn call(&self, interpreter: &mut Interpreter, args: Vec<Value>) -> Result<Value, RuntimeError> {
+        // natives don't know the call's line, so they report line 0;
+        // Expr::Call fills in the real line from the ")" token
+        (self.func)(interpreter, &args)
+            .map_err(|message| RuntimeError { line: 0, message })
+    }
+
+    fn describe(&self) -> String {
+        format!("<native {}>", self.name)
+    }
 }
 
 pub const DEFAULT_SEED: u64 = 0x2545_F491_4F6C_DD1D;
 
 pub static NATIVES: &[NativeFn] = &[
     NativeFn { name: "pow",    arity: 2, func: native_pow },
+    NativeFn { name: "bound",  arity: 3, func: native_bound },
     NativeFn { name: "seed",   arity: 1, func: native_seed },
     NativeFn { name: "random", arity: 0, func: native_random },
 ];
 
-// the error cites the call's ")" token so the line number is the call's line
-fn num(name: &str, args: &[Value], i: usize, tok: &Token) -> Result<f64, RuntimeError> {
+fn num(name: &str, args: &[Value], i: usize) -> Result<f64, String> {
     match &args[i] {
         Value::Num(n) => Ok(*n),
-        _ => Err(RuntimeError::new(
-            tok,
-            &format!("{name}: argument {} must be a number.", i + 1),
-        )),
+        _ => Err(format!("{name}: argument {} must be a number.", i + 1)),
     }
 }
 
 // pow(base, exp) -> number
-fn native_pow(_: &mut Interpreter, args: &[Value], tok: &Token) -> Result<Value, RuntimeError> {
-    let base = num("pow", args, 0, tok)?;
-    let exp = num("pow", args, 1, tok)?;
+fn native_pow(_: &mut Interpreter, args: &[Value]) -> Result<Value, String> {
+    let base = num("pow", args, 0)?;
+    let exp = num("pow", args, 1)?;
     let result = base.powf(exp);
     if !result.is_finite() {
-        return Err(RuntimeError::new(tok, "pow: result is not a finite number."));
+        return Err("pow: result is not a finite number.".to_string());
     }
     Ok(Value::Num(result))
 }
 
-// scrambles the user's seed so nearby seeds (1, 2, 3) give unrelated starting states
+// bound(x, lo, hi) -> number in [lo, hi]
+fn native_bound(_: &mut Interpreter, args: &[Value]) -> Result<Value, String> {
+    let x = num("bound", args, 0)?;
+    let lo = num("bound", args, 1)?;
+    let hi = num("bound", args, 2)?;
+    if lo > hi {
+        return Err("bound: lo must not be greater than hi.".to_string());
+    }
+    Ok(Value::Num(if x < lo { lo } else if x > hi { hi } else { x }))
+}
+
+//scrambles the user's seed so nearby seeds (1, 2, 3) give unrelated starting states
 fn splitmix64(mut z: u64) -> u64 {
     z = z.wrapping_add(0x9E37_79B9_7F4A_7C15);
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
@@ -52,19 +74,19 @@ fn splitmix64(mut z: u64) -> u64 {
 }
 
 // seed(n) -> nil
-fn native_seed(it: &mut Interpreter, args: &[Value], tok: &Token) -> Result<Value, RuntimeError> {
-    let n = num("seed", args, 0, tok)?;
+fn native_seed(it: &mut Interpreter, args: &[Value]) -> Result<Value, String> {
+    let n = num("seed", args, 0)?;
     if !n.is_finite() {
-        return Err(RuntimeError::new(tok, "seed: argument must be finite."));
+        return Err("seed: argument must be finite.".to_string());
     }
     let state = splitmix64(n.to_bits());
-    // xorshift gets stuck forever if its state is 0
+    // xorshift gets stuck forever at state 0
     it.rng_state = if state == 0 { DEFAULT_SEED } else { state };
     Ok(Value::Nil)
 }
 
-// random() -> number in [0, 1), deterministic: same seed, same sequence
-fn native_random(it: &mut Interpreter, _: &[Value], _: &Token) -> Result<Value, RuntimeError> {
+// random() -> number in [0, 1); same seed gives the same sequence
+fn native_random(it: &mut Interpreter, _: &[Value]) -> Result<Value, String> {
     let mut x = it.rng_state;
     x ^= x << 13;
     x ^= x >> 7;

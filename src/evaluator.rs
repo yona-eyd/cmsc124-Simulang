@@ -4,7 +4,7 @@ use crate::context::{Context, ContextRef};
 use std::fmt;
 use std::rc::Rc;
 use crate::callable::{Callable, UserFunction};
-use crate::natives::{self, NativeFn};
+use crate::natives;
 
 // in 5PR3: Debug + PartialEq removed
 // compiler can't auto-write them for a trait object 
@@ -15,7 +15,6 @@ pub enum Value {
     Bool(bool),
     Nil,
     Callable(Rc<dyn Callable>),
-    Native(&'static NativeFn),
 }
 
 #[derive(Debug)]
@@ -59,8 +58,7 @@ pub fn is_equal(a: &Value, b: &Value) -> bool {
         (Value::Nil, Value::Nil) => true,
         // returns true only when x and y are the very same object
         (Value::Callable(x), Value::Callable(y)) => Rc::ptr_eq(x, y),
-        (Value::Native(x), Value::Native(y)) => std::ptr::eq(*x, *y),
-        _ => false,
+        _ => false
     }
 }
 
@@ -80,7 +78,7 @@ impl fmt::Display for Value {
             Value::Bool(b)      => write!(f, "{}", b),
             Value::Nil          => write!(f, "nil"),
             Value::Callable(c)  => write!(f, "{}", c.describe()),
-            Value::Native(n) => write!(f, "<native {}>", n.name),
+          
         }
     }
 }
@@ -124,7 +122,7 @@ impl Interpreter {
         };
         // natives exist before any user code runs
         for n in natives::NATIVES {
-            it.context.borrow_mut().define_global(n.name, Value::Native(n));
+            it.context.borrow_mut().define_global(n.name, Value::Callable(Rc::new(*n)));
         }
         it
     }
@@ -237,23 +235,21 @@ impl Interpreter {
             // a call expression: evaluate callee & arguments, check them, then run the function
             Expr::Call { callee, paren, arguments } => {
                 let callee_value = self.evaluate(callee)?;
-                
-                // evaluate arguments left to right into a Vec<Value>
+
+                // arguments left to right, in the caller's scope
                 let mut args = Vec::new();
                 for arg in arguments {
                     args.push(self.evaluate(arg)?);
                 }
 
-                // check if function is callable
-                // only callables can be called
                 match callee_value {
                     Value::Callable(function) => {
+                        // one arity check for laws and natives alike
                         check_arity(paren, function.arity(), args.len())?;
-                        function.call(self, args)
-                    }
-                    Value::Native(native) => {
-                        check_arity(paren, native.arity, args.len())?;
-                        (native.func)(self, &args, paren)
+                        function.call(self, args).map_err(|mut e| {
+                            if e.line == 0 { e.line = paren.line; }   // natives report line 0
+                            e
+                        })
                     }
                     _ => Err(RuntimeError::new(paren, "Can only call functions.")),
                 }
