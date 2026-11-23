@@ -1,0 +1,17 @@
+law flips(n) {
+  var heads = 0;
+  var i = 0;
+  evolve until (i >= n) {
+    when (random() < 0.5) {
+      heads = heads + 1;
+    }
+    i = i + 1;
+  }
+  return heads;
+}
+
+seed(99);
+var first = flips(20);
+seed(99);
+var second = flips(20);
+print first == second;   // expect: true
