@@ -1,0 +1,2 @@
+var r = random();
+print r >= 0 and r < 1;   // expect: true

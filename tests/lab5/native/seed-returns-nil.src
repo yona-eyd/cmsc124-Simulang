@@ -1,0 +1,3 @@
+print seed(1);   // expect: nil
+print seed(-1);   // expect: nil
+print seed(0.1);   // expect: nil

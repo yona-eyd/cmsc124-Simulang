@@ -1,0 +1,2 @@
+print pow(-2, 3);   // expect: -8
+print pow(-2, 2);   // expect: 4

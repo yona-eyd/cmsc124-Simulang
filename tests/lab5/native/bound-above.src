@@ -1,0 +1,1 @@
+print bound(15, 0, 10);   // expect: 10

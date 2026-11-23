@@ -1,0 +1,5 @@
+seed(42);
+var a = random();
+seed(42);
+var b = random();
+print a == b;   // expect: true

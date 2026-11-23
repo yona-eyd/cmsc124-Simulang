@@ -1,0 +1,2 @@
+print pow(5, 0);   // expect: 1
+print pow(0, 0);   // expect: 1

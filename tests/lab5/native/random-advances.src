@@ -1,0 +1,3 @@
+var a = random();
+var b = random();
+print a == b;   // expect: false
