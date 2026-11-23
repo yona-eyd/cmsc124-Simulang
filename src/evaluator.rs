@@ -113,13 +113,14 @@ fn check_arity(paren: &Token, expected: usize, got: usize) -> Result<(), Runtime
 
 pub struct Interpreter {
     context: ContextRef,
+    pub(crate) rng_state: u64,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
         let it = Interpreter {
             context: Context::new_global(),
-            //add seed here
+            rng_state: natives::DEFAULT_SEED,
         };
         // natives exist before any user code runs
         for n in natives::NATIVES {
