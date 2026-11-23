@@ -47,6 +47,11 @@ impl Context {
         Ok(())
     }
 
+    // natives are installed before user code runs
+    pub fn define_global(&mut self, name: &str, value: Value) {
+        self.values.insert(name.to_string(), value);
+    }
+
     // walks outward; the innermost binding wins.
     pub fn get(&self, name: &Token) -> Result<Value, RuntimeError> {
         if let Some(v) = self.values.get(&name.lexeme) {

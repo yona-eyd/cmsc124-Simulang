@@ -100,13 +100,32 @@ pub fn check_number_operands(token: &Token, left: &Value, right: &Value) -> Resu
     }
 }
 
+fn check_arity(paren: &Token, expected: usize, got: usize) -> Result<(), RuntimeError> {
+    if expected != got {
+        Err(RuntimeError::new(
+            paren,
+            &format!("Expected {expected} arguments but got {got}."),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 pub struct Interpreter {
     context: ContextRef,
 }
 
 impl Interpreter {
     pub fn new() -> Self {
-        Interpreter { context: Context::new_global() }
+        let it = Interpreter {
+            context: Context::new_global(),
+            //add seed here
+        };
+        // natives exist before any user code runs
+        for n in natives::NATIVES {
+            it.context.borrow_mut().define_global(n.name, Value::Native(n));
+        }
+        it
     }
 
     pub fn evaluate(&mut self, expr: &Expr) -> Result<Value, RuntimeError> {
@@ -228,14 +247,14 @@ impl Interpreter {
                 // only callables can be called
                 match callee_value {
                     Value::Callable(function) => {
-                        // arity check: expected (what the law declares) but got (what was passed)
-                        if args.len() != function.arity() {
-                            Err(RuntimeError::new(paren, &format!("Expected {} arguments but got {}.", function.arity(), args.len())))
-                        } else {
-                            function.call(self, args)
-                        }
+                        check_arity(paren, function.arity(), args.len())?;
+                        function.call(self, args)
                     }
-                    _ => Err(RuntimeError::new(paren, "Can only call functions."))
+                    Value::Native(native) => {
+                        check_arity(paren, native.arity, args.len())?;
+                        (native.func)(self, &args, paren)
+                    }
+                    _ => Err(RuntimeError::new(paren, "Can only call functions.")),
                 }
             }
         }
