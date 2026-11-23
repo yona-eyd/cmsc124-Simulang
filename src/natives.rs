@@ -18,6 +18,7 @@ pub const DEFAULT_SEED: u64 = 0x2545_F491_4F6C_DD1D;
 pub static NATIVES: &[NativeFn] = &[
     NativeFn { name: "pow",    arity: 2, func: native_pow },
     NativeFn { name: "seed",   arity: 1, func: native_seed },
+    NativeFn { name: "random", arity: 0, func: native_random },
 ];
 
 // the error cites the call's ")" token so the line number is the call's line
@@ -60,4 +61,15 @@ fn native_seed(it: &mut Interpreter, args: &[Value], tok: &Token) -> Result<Valu
     // xorshift gets stuck forever if its state is 0
     it.rng_state = if state == 0 { DEFAULT_SEED } else { state };
     Ok(Value::Nil)
+}
+
+// random() -> number in [0, 1), deterministic: same seed, same sequence
+fn native_random(it: &mut Interpreter, _: &[Value], _: &Token) -> Result<Value, RuntimeError> {
+    let mut x = it.rng_state;
+    x ^= x << 13;
+    x ^= x >> 7;
+    x ^= x << 17;
+    it.rng_state = x;
+    // top 53 bits fill an f64 mantissa exactly, so the result is < 1.0
+    Ok(Value::Num((x >> 11) as f64 / (1u64 << 53) as f64))
 }
